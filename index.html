@@ -226,15 +226,11 @@
       <div class="form-group"><label>Admin Fee (Laba)</label><input type="text" id="adminFee" class="form-control" inputmode="numeric" oninput="formatInput(this)" value="0"></div>
 
       <div class="form-group"><label>Keterangan</label><input type="text" id="keterangan" class="form-control" placeholder="..."></div>
-      <div class="form-group">
-        <label>Foto Struk / Bukti (Kamera Live)</label>
-        <input type="file" id="transaksiPhoto" class="form-control" accept="image/*" capture="environment">
-      </div>
       <button type="submit" class="btn-submit">SIMPAN TRANSAKSI</button>
-
     </form>
   </div>
 </div>
+
 
 <div class="modal" id="modalAkun">
   <div class="modal-card">
@@ -289,12 +285,18 @@
 <div class="modal" id="modalKontak">
   <div class="modal-card">
     <div class="modal-title">👥 Kontak & Catatan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+
     <div id="listKontak" style="max-height:200px; overflow-y:auto; margin-bottom:15px"></div>
     <div class="form-group"><label>Nama / Ket</label><input type="text" id="kontakNama" class="form-control"></div>
     <div class="form-group"><label>No HP / Rekening</label><input type="text" id="kontakWA" class="form-control"></div>
+    <div class="form-group">
+      <label>Ambil Foto (Kamera Live)</label>
+      <input type="file" id="kontakPhoto" class="form-control" accept="image/*" capture="environment">
+    </div>
     <button class="btn-submit" onclick="tambahKontak()">SIMPAN KONTAK</button>
   </div>
 </div>
+
 
 
 <div class="modal" id="modalRiwayat">
@@ -420,22 +422,30 @@
     document.getElementById('totalTambahSaldoDisplay').innerText = formatRp(data.depo);
   };
 
+
   window.simpanTransaksi = async (e) => {
     e.preventDefault();
-    const kat = document.getElementById('kategori').value;
-    const nom = getInt('nominal');
-    const fee = getInt('adminFee');
-    const ket = document.getElementById('keterangan').value || kat;
+    if(!currentUser) return alert("Belum login");
+    try {
+      const kat = document.getElementById('kategori').value;
+      const nom = getInt('nominal');
+      const fee = getInt('adminFee');
+      const ket = document.getElementById('keterangan').value || kat;
 
-    if(["Seabank", "Dana", "Orderkuota"].includes(kat)) { data.kas += nom; data.bank -= nom; data.admin += fee; }
-    else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
-    else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
+      if(nom <= 0) return alert("Nominal harus diisi");
 
-    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
-    await syncBalances();
-    tutupSemuaModal();
-    e.target.reset();
+      if(["Seabank", "Dana", "Orderkuota"].includes(kat)) { data.kas += nom; data.bank -= nom; data.admin += fee; }
+      else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
+      else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
+
+      await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
+      await syncBalances();
+      alert("Transaksi Berhasil!");
+      tutupSemuaModal();
+      e.target.reset();
+    } catch(err) { alert("Gagal Simpan: " + err.message); }
   };
+
 
   async function syncBalances() {
     await updateDoc(doc(db, "users", currentUser.uid), {
@@ -443,13 +453,19 @@
     });
   }
 
+
   window.tambahKasbon = async () => {
-    const nama = document.getElementById('kasbonNama').value;
-    const nom = getInt('kasbonNominal');
-    if(!nama || nom <= 0) return;
-    await addDoc(collection(db, "users", currentUser.uid, "kasbon"), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
-    document.getElementById('kasbonNama').value = ''; document.getElementById('kasbonNominal').value = '';
+    if(!currentUser) return;
+    try {
+      const nama = document.getElementById('kasbonNama').value;
+      const nom = getInt('kasbonNominal');
+      if(!nama || nom <= 0) return alert("Nama & Nominal harus diisi");
+      await addDoc(collection(db, "users", currentUser.uid, "kasbon"), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
+      document.getElementById('kasbonNama').value = ''; document.getElementById('kasbonNominal').value = '';
+      alert("Kasbon Ditambahkan!");
+    } catch(err) { alert("Gagal: " + err.message); }
   };
+
 
   window.bayarKasbon = async (id) => {
     const k = data.kasbon.find(x => x.id === id);
@@ -460,25 +476,39 @@
     await syncBalances();
   };
 
+
   window.tambahKontak = async () => {
-    const nama = document.getElementById('kontakNama').value;
-    const wa = document.getElementById('kontakWA').value;
-    if(!nama || !wa) return;
-    await addDoc(collection(db, "users", currentUser.uid, "kontak"), { nama, wa, createdAt: new Date().toISOString() });
-    document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
+    if(!currentUser) return;
+    try {
+      const nama = document.getElementById('kontakNama').value;
+      const wa = document.getElementById('kontakWA').value;
+      if(!nama || !wa) return alert("Nama & Nomor harus diisi");
+      await addDoc(collection(db, "users", currentUser.uid, "kontak"), { nama, wa, createdAt: new Date().toISOString() });
+      document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
+      alert("Kontak Tersimpan!");
+    } catch(err) { alert("Gagal: " + err.message); }
   };
+
 
   window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, "users", currentUser.uid, "kontak", id)); };
 
 
+
   window.simpanDeposit = async () => {
-    const t = document.getElementById('depoTujuan').value;
-    const n = getInt('depoNominal');
-    if(t==='bank') data.bank += n; else data.kas += n;
-    data.depo += n;
-    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
-    await syncBalances(); tutupSemuaModal();
+    if(!currentUser) return;
+    try {
+      const t = document.getElementById('depoTujuan').value;
+      const n = getInt('depoNominal');
+      if(n <= 0) return alert("Nominal harus diisi");
+      if(t==='bank') data.bank += n; else data.kas += n;
+      data.depo += n;
+      await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
+      await syncBalances(); 
+      alert("Deposit Berhasil!");
+      tutupSemuaModal();
+    } catch(err) { alert("Gagal: " + err.message); }
   };
+
 
 
   window.updateProfil = async () => {
@@ -525,14 +555,19 @@
       </div>
     `).join('');
   }
+
   function renderKontak() {
     document.getElementById('listKontak').innerHTML = data.kontak.map(k => `
       <div class="history-item">
         <div class="history-info"><div>${k.nama}</div><div>${k.wa}</div></div>
-        <button onclick="hapusKontak('${k.id}')" style="background:var(--danger); color:white; border:none; padding:4px 8px; border-radius:6px">HAPUS</button>
+        <div style="display:flex; gap:5px">
+          <button onclick="navigator.clipboard.writeText('${k.wa}'); alert('Salin: ${k.wa}')" style="background:var(--accent); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">COPY</button>
+          <button onclick="hapusKontak('${k.id}')" style="background:var(--danger); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">HAPUS</button>
+        </div>
       </div>
     `).join('');
   }
+
 
   window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
   window.bukaLaporan = () => {
