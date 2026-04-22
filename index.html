@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>KASLINK • POS System</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #f8fafc; --text: #0f172a; --text-muted: #64748b; --card: #ffffff;
+      --accent: #2563eb; --accent-light: #eff6ff; --border: #e2e8f0;
+      --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+      --grad-blue: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      --grad-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .dark {
+      --bg: #0f172a; --text: #f8fafb; --text-muted: #94a3b8; --card: #1e293b;
+      --accent: #3b82f6; --accent-light: #1e3a8a; --border: #334155;
+    }
+    body { background: var(--bg); color: var(--text); transition: background 0.3s; font-size: 14px; min-height: 100vh; overflow-x: hidden; }
+
+    /* AUTH UI */
+    #authContainer { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%); }
+    .login-card { background: var(--card); border-radius: 28px; padding: 40px 32px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border); width: 100%; max-width: 420px; }
+    
+    /* APP UI */
+    #appContainer { display: none; padding-bottom: 120px; }
+    
+    /* HEADER */
+    .header { padding: 16px 20px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .brand-box { display: flex; align-items: center; gap: 12px; }
+    .logo-img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; }
+    .brand-text h3 { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1.2; letter-spacing: -0.5px; }
+    .brand-text p { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .time-display { font-size: 24px; font-weight: 800; color: var(--accent); letter-spacing: -1px; }
+    .header-btns { display: flex; gap: 6px; }
+    .h-btn { width: 34px; height: 34px; border-radius: 10px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; border: 1px solid #e2e8f0; }
+    .dark .h-btn { background: #334155; border-color: #475569; }
+
+    /* DASHBOARD CARDS */
+    .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+    .balance-card { position: relative; padding: 24px; border-radius: 24px; color: white; margin-bottom: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); overflow: hidden; }
+    .balance-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+    .card-blue { background: var(--grad-blue); }
+    .card-green { background: var(--grad-green); }
+    .card-label { font-size: 12px; font-weight: 600; opacity: 0.9; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .card-value { font-size: 32px; font-weight: 800; }
+    .rincian-btn { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.3); }
+
+    /* QUICK ACTIONS */
+    .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .qa-btn { background: var(--card); border: 1px solid var(--border); padding: 14px 8px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; font-size: 12px; box-shadow: var(--shadow); cursor: pointer; }
+    .qa-btn i { font-size: 16px; }
+
+    /* LABA GRID */
+    .laba-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .laba-card { background: var(--card); padding: 16px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .laba-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .laba-value { font-size: 18px; font-weight: 800; color: var(--text); }
+
+    /* BOTTOM NAV & FAB */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); padding: 8px 10px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 20px; }
+    .fab-box { position: relative; bottom: 20px; }
+    .fab-btn { width: 64px; height: 64px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; box-shadow: 0 10px 15px -3px rgba(37,99,235,0.4); border: 5px solid var(--bg); cursor: pointer; transition: 0.2s; }
+    .fab-btn:active { transform: scale(0.9); }
+
+    /* MODAL */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: flex-end; justify-content: center; z-index: 2000; padding: 10px; }
+    .modal-card { background: var(--card); width: 100%; max-width: 500px; border-radius: 32px; padding: 28px; max-height: 90vh; overflow-y: auto; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); }
+    .modal-title { font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 24px; text-align: center; position: relative; }
+    .close-modal { position: absolute; right: 0; top: -4px; font-size: 24px; color: var(--text-muted); cursor: pointer; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px; }
+    .form-control { width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 14px; background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
+    .form-control:focus { border-color: var(--accent); }
+    .btn-submit { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--accent); color: white; font-weight: 800; font-size: 15px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+    
+    /* MISC */
+    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .history-info div:first-child { font-weight: 700; }
+    .history-info div:last-child { font-size: 11px; color: var(--text-muted); }
+    .history-amt { font-weight: 800; font-size: 15px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="light">
+
+<!-- AUTH PANEL -->
+<div id="authContainer">
+  <div class="login-card">
+    <div style="text-align:center; margin-bottom:30px">
+      <h1 style="font-size:32px; font-weight:900; color:var(--accent); letter-spacing:-1px">KASLINK</h1>
+      <p style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:1px">Pembukuan Kasir Agen Brilink</p>
+    </div>
+    <div id="loginPanel">
+      <div class="modal-title">🔐 Masuk Akun</div>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" placeholder="owner@kaslink.id" required></div>
+        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required></div>
+        <button type="submit" class="btn-submit">MASUK KE KASIR</button>
+      </form>
+      <p style="text-align:center; margin-top:20px; font-size:13px">Belum ada akun? <a href="#" onclick="toggleAuth(true)" style="color:var(--accent); font-weight:800">Daftar</a></p>
+    </div>
+    <div id="registerPanel" class="hidden">
+      <div class="modal-title">📝 Daftar Baru</div>
+      <form onsubmit="handleRegister(event)">
+        <div class="form-group"><label>Email</label><input type="email" id="regEmail" class="form-control" required></div>
+        <div class="form-group"><label>WhatsApp</label><input type="tel" id="regPhone" class="form-control" required></div>
+        <div class="form-group"><label>Password</label><input type="password" id="regPassword" class="form-control" required></div>
+        <button type="submit" class="btn-submit">BUAT AKUN</button>
+      </form>
+      <p style="text-align:center; margin-top:20px; font-size:13px">Sudah punya akun? <a href="#" onclick="toggleAuth(false)" style="color:var(--accent); font-weight:800">Login</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- APP UI -->
+<div id="appContainer">
+  <div class="header">
+    <div class="brand-box">
+      <img id="headerLogo" src="logo.png" class="logo-img" onclick="bukaModal('modalAkun')">
+      <div class="brand-text">
+        <h3>KASLINK</h3>
+        <p>Pembukuan Kasir Agen Brilink</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="jam" class="time-display">00.00.00</div>
+      <div class="header-btns">
+        <div class="h-btn" onclick="toggleLandscape()">🔄</div>
+        <div class="h-btn" onclick="toggleMode()">🌗</div>
+        <div class="h-btn" onclick="toggleScale()">💻</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="balance-card card-blue">
+      <div class="card-label">Saldo Bank <span class="rincian-btn" onclick="bukaRiwayat()">Rincian</span></div>
+      <div id="saldoBankDisplay" class="card-value">Rp 0</div>
+    </div>
+    <div class="balance-card card-green">
+      <div class="card-label">Saldo Kas Tunai <span class="rincian-btn" onclick="bukaRiwayat()">Rincian</span></div>
+      <div id="saldoKasTunaiDisplay" class="card-value">Rp 0</div>
+    </div>
+
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="bukaModal('modalKasbon')">💰 KASBON</div>
+      <div class="qa-btn" onclick="bukaModal('modalDeposit')">🏦 DEPOSIT</div>
+      <div class="qa-btn" onclick="bukaModal('modalKontak')">📞 KONTAK</div>
+    </div>
+
+    <div class="laba-grid">
+      <div class="laba-card">
+        <div class="laba-label">📊 LABA ADMIN</div>
+        <div id="labaAdminDisplay" class="laba-value">Rp 0</div>
+      </div>
+      <div class="laba-card">
+        <div class="laba-label">🎧 LABA ACC</div>
+        <div id="labaAksesorisDisplay" class="laba-value">Rp 0</div>
+      </div>
+      <div class="laba-card">
+        <div class="laba-label">🏧 TARIK TUNAI</div>
+        <div id="tarikTunaiDisplay" class="laba-value">Rp 0</div>
+      </div>
+      <div class="laba-card">
+        <div class="laba-label">📈 TOTAL DEPOSIT</div>
+        <div id="totalTambahSaldoDisplay" class="laba-value">Rp 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="location.reload()">
+      <span class="nav-icon">🏠</span>
+      <div>Beranda</div>
+    </div>
+    <div class="nav-item" onclick="bukaRiwayat()">
+      <span class="nav-icon">📋</span>
+      <div>Riwayat</div>
+    </div>
+    <div class="fab-box">
+      <div class="fab-btn" onclick="bukaModal('modalTransaksi')">+</div>
+    </div>
+    <div class="nav-item" onclick="bukaLaporan()">
+      <span class="nav-icon">📊</span>
+      <div>Laporan</div>
+    </div>
+    <div class="nav-item" onclick="bukaModal('modalAkun')">
+      <span class="nav-icon">👤</span>
+      <div>Akun</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="modalTransaksi">
+  <div class="modal-card">
+    <div class="modal-title">💸 Transaksi Baru <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <form onsubmit="simpanTransaksi(event)">
+      <div class="form-group"><label>Kategori</label>
+        <select id="kategori" class="form-control">
+          <option value="Seabank">Seabank</option>
+          <option value="Dana">Dana</option>
+          <option value="Orderkuota">Orderkuota</option>
+          <option value="Tarik Tunai">Tarik Tunai</option>
+          <option value="Aksesoris">Aksesoris</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Nominal (Rp)</label><input type="text" id="nominal" class="form-control" inputmode="numeric" oninput="formatInput(this)" placeholder="0" required></div>
+      <div class="form-group"><label>Admin Fee (Laba)</label><input type="text" id="adminFee" class="form-control" inputmode="numeric" oninput="formatInput(this)" value="0"></div>
+      <div class="form-group"><label>Keterangan</label><input type="text" id="keterangan" class="form-control" placeholder="..."></div>
+      <button type="submit" class="btn-submit">SIMPAN TRANSAKSI</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalAkun">
+  <div class="modal-card">
+    <div class="modal-title">👤 Profil & Pengaturan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div class="form-group"><label>Nama Toko</label><input type="text" id="profToko" class="form-control"></div>
+    <div class="form-group"><label>Kategori Default</label>
+      <select id="profDefaultKat" class="form-control">
+        <option value="Seabank">Seabank</option>
+        <option value="Dana">Dana</option>
+        <option value="Orderkuota">Orderkuota</option>
+        <option value="Tarik Tunai">Tarik Tunai</option>
+        <option value="Aksesoris">Aksesoris</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Email</label><input type="text" id="profEmail" class="form-control" readonly></div>
+    <div class="form-group"><label>Password Baru</label><input type="password" id="profPass" class="form-control" placeholder="••••••••"></div>
+    <button class="btn-submit" onclick="updateProfil()">UPDATE PROFIL</button>
+    <button class="btn-submit" style="background:var(--danger); margin-top:10px" onclick="logout()">KELUAR AKUN</button>
+  </div>
+</div>
+
+<div class="modal" id="modalKasbon">
+  <div class="modal-card">
+    <div class="modal-title">💰 Kasbon Aktif <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="listKasbon" style="max-height:200px; overflow-y:auto; margin-bottom:15px"></div>
+    <div class="form-group"><label>Nama Pelanggan</label><input type="text" id="kasbonNama" class="form-control"></div>
+    <div class="form-group"><label>Nominal</label><input type="text" id="kasbonNominal" class="form-control" inputmode="numeric" oninput="formatInput(this)"></div>
+    <button class="btn-submit" onclick="tambahKasbon()">TAMBAH KASBON</button>
+  </div>
+</div>
+
+<div class="modal" id="modalDeposit">
+  <div class="modal-card">
+    <div class="modal-title">🏦 Tambah Saldo <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div class="form-group"><label>Tujuan</label><select id="depoTujuan" class="form-control"><option value="bank">Saldo Bank</option><option value="kas">Kas Tunai</option></select></div>
+    <div class="form-group"><label>Nominal</label><input type="text" id="depoNominal" class="form-control" inputmode="numeric" oninput="formatInput(this)"></div>
+    <button class="btn-submit" onclick="simpanDeposit()">SIMPAN DEPOSIT</button>
+  </div>
+</div>
+
+<div class="modal" id="modalRiwayat">
+  <div class="modal-card">
+    <div class="modal-title">📜 Riwayat <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="listRiwayat"></div>
+  </div>
+</div>
+
+<div class="modal" id="modalLaporan">
+  <div class="modal-card">
+    <div class="modal-title">📊 Laporan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="kontenLaporan"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
+  import { updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  let currentUser = null;
+  let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, history:[], kasbon:[], kontak:[], profile:{} };
+
+  onAuthStateChanged(auth, (user) => {
+    document.getElementById('authContainer').style.display = user ? 'none' : 'flex';
+    document.getElementById('appContainer').style.display = user ? 'block' : 'none';
+    if(user) { currentUser = user; initData(); }
+  });
+
+  window.toggleAuth = (isReg) => {
+    document.getElementById('loginPanel').classList.toggle('hidden', isReg);
+    document.getElementById('registerPanel').classList.toggle('hidden', !isReg);
+  };
+
+  window.handleLogin = async (e) => {
+    e.preventDefault();
+    try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); }
+    catch(err) { alert("Gagal: " + err.message); }
+  };
+
+  window.handleRegister = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('regEmail').value;
+    try {
+      const res = await createUserWithEmailAndPassword(auth, email, document.getElementById('regPassword').value);
+      await setDoc(doc(db, "users", res.user.uid), {
+        profile: { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" },
+        balances: { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 }
+      });
+    } catch(err) { alert("Gagal: " + err.message); }
+  };
+
+  async function initData() {
+    onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
+      if(snap.exists()) {
+        const u = snap.data();
+        data = { ...data, ...u.balances, profile: u.profile };
+        document.getElementById('profToko').value = u.profile.toko || '';
+        document.getElementById('profEmail').value = u.profile.email || '';
+        document.getElementById('profDefaultKat').value = u.profile.defaultCategory || 'Seabank';
+        document.getElementById('kategori').value = u.profile.defaultCategory || 'Seabank';
+        updateUI();
+      }
+    });
+    onSnapshot(query(collection(db, "users", currentUser.uid, "history"), orderBy("tgl", "desc"), limit(50)), (snap) => {
+      data.history = snap.docs.map(d => d.data()); renderRiwayat();
+    });
+    onSnapshot(collection(db, "users", currentUser.uid, "kasbon"), (snap) => {
+      data.kasbon = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKasbon();
+    });
+  }
+
+  function formatRp(v) { return 'Rp ' + (v || 0).toLocaleString('id-ID'); }
+  window.formatInput = (el) => {
+    let v = el.value.replace(/\D/g, "");
+    el.value = v === "" ? "" : parseInt(v).toLocaleString("id-ID");
+  };
+  function getInt(id) { return parseInt(document.getElementById(id).value.replace(/\./g, "")) || 0; }
+
+  window.updateUI = () => {
+    document.getElementById('saldoBankDisplay').innerText = formatRp(data.bank);
+    document.getElementById('saldoKasTunaiDisplay').innerText = formatRp(data.kas);
+    document.getElementById('labaAdminDisplay').innerText = formatRp(data.admin);
+    document.getElementById('labaAksesorisDisplay').innerText = formatRp(data.acc);
+    document.getElementById('tarikTunaiDisplay').innerText = formatRp(data.tarik);
+    document.getElementById('totalTambahSaldoDisplay').innerText = formatRp(data.depo);
+  };
+
+  window.simpanTransaksi = async (e) => {
+    e.preventDefault();
+    const kat = document.getElementById('kategori').value;
+    const nom = getInt('nominal');
+    const fee = getInt('adminFee');
+    const ket = document.getElementById('keterangan').value || kat;
+
+    if(["Seabank", "Dana", "Orderkuota"].includes(kat)) { data.kas += nom; data.bank -= nom; data.admin += fee; }
+    else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
+    else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
+
+    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
+    await syncBalances();
+    tutupSemuaModal();
+    e.target.reset();
+  };
+
+  async function syncBalances() {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      balances: { bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo }
+    });
+  }
+
+  window.tambahKasbon = async () => {
+    const nama = document.getElementById('kasbonNama').value;
+    const nom = getInt('kasbonNominal');
+    if(!nama || nom <= 0) return;
+    await addDoc(collection(db, "users", currentUser.uid, "kasbon"), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
+    document.getElementById('kasbonNama').value = ''; document.getElementById('kasbonNominal').value = '';
+  };
+
+  window.bayarKasbon = async (id) => {
+    const k = data.kasbon.find(x => x.id === id);
+    data.kas += k.nominal;
+    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
+    await deleteDoc(doc(db, "users", currentUser.uid, "kasbon", id));
+    await syncBalances();
+  };
+
+  window.simpanDeposit = async () => {
+    const t = document.getElementById('depoTujuan').value;
+    const n = getInt('depoNominal');
+    if(t==='bank') data.bank += n; else data.kas += n;
+    data.depo += n;
+    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
+    await syncBalances(); tutupSemuaModal();
+  };
+
+  window.updateProfil = async () => {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      "profile.toko": document.getElementById('profToko').value,
+      "profile.defaultCategory": document.getElementById('profDefaultKat').value
+    });
+    if(document.getElementById('profPass').value) await updatePassword(currentUser, document.getElementById('profPass').value);
+    alert("Berhasil!"); tutupSemuaModal();
+  };
+
+  window.logout = () => signOut(auth);
+  window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
+  window.tutupSemuaModal = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+  window.toggleMode = () => document.body.classList.toggle('dark');
+  window.toggleLandscape = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
+  window.toggleScale = () => { document.body.style.maxWidth = document.body.style.maxWidth === '600px' ? '100%' : '600px'; document.body.style.margin = '0 auto'; };
+
+  function renderRiwayat() {
+    document.getElementById('listRiwayat').innerHTML = data.history.map(h => `
+      <div class="history-item">
+        <div class="history-info"><div>${h.ket}</div><div>${new Date(h.tgl).toLocaleString('id-ID')}</div></div>
+        <div class="history-amt amt-plus">+${formatRp(h.amt)}</div>
+      </div>
+    `).join('');
+  }
+  function renderKasbon() {
+    document.getElementById('listKasbon').innerHTML = data.kasbon.map(k => `
+      <div class="history-item">
+        <div class="history-info"><div>${k.nama}</div><div>${k.tgl}</div></div>
+        <div style="display:flex; align-items:center; gap:8px"><div class="history-amt amt-minus">-${formatRp(k.nominal)}</div><button onclick="bayarKasbon('${k.id}')" style="background:var(--success); color:white; border:none; padding:4px 8px; border-radius:6px">LUNAS</button></div>
+      </div>
+    `).join('');
+  }
+  window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
+  window.bukaLaporan = () => {
+    document.getElementById('kontenLaporan').innerHTML = `<div style="background:var(--accent-light); padding:20px; border-radius:20px; margin-bottom:15px"><div>TOTAL LABA</div><div style="font-size:24px; font-weight:800">${formatRp(data.admin+data.acc)}</div></div>
+    <div class="history-item"><span>Laba Admin</span> <b>${formatRp(data.admin)}</b></div><div class="history-item"><span>Laba Acc</span> <b>${formatRp(data.acc)}</b></div>`;
+    bukaModal('modalLaporan');
+  };
+
+  setInterval(() => { document.getElementById('jam').innerText = new Date().toLocaleTimeString('id-ID'); }, 1000);
+</script>
+</body>
+</html>

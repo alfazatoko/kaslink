@@ -1,0 +1,14 @@
+{
+  "name": "kaslink-pro",
+  "version": "1.0.0",
+  "description": "KASLINK - Kasir Agen Brilink Pro",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy": "firebase deploy"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
