@@ -316,12 +316,14 @@
 <div class="modal" id="modalRiwayat">
   <div class="modal-card">
     <div class="modal-title">📜 Riwayat <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
-    <div style="display:flex; gap:8px; margin-bottom:15px">
+    <div style="display:flex; gap:8px; margin-bottom:15px; align-items:center">
       <select id="filterKat" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
-        <option value="">Semua Kategori</option>
+        <option value="">Kategori</option>
       </select>
       <input type="date" id="filterTgl" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
+      <button onclick="resetFilter()" class="btn-submit" style="padding:8px 12px; width:auto; font-size:11px; height:38px">SETEL</button>
     </div>
+
     <div id="listRiwayat"></div>
   </div>
 </div>
@@ -344,6 +346,7 @@
   }
 
   let currentUser = null;
+  const getUKey = (email) => "KASLINK_" + email.replace(/[^a-zA-Z0-9]/g, "_");
 
   let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, history:[], kasbon:[], kontak:[], profile:{} };
 
@@ -352,6 +355,7 @@
     document.getElementById('appContainer').style.display = user ? 'block' : 'none';
     if(user) { currentUser = user; initData(); }
   });
+
 
   window.toggleAuth = (isReg) => {
     document.getElementById('loginPanel').classList.toggle('hidden', isReg);
@@ -364,71 +368,61 @@
     catch(err) { alert("Gagal: " + err.message); }
   };
 
-  window.handleRegister = async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('regEmail').value;
     try {
       const res = await createUserWithEmailAndPassword(auth, email, document.getElementById('regPassword').value);
-      await setDoc(doc(db, "users", res.user.uid), {
-        profile: { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" },
-        balances: { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 }
-      });
+      const uid = res.user.uid;
+      await setDoc(doc(db, "profile_" + uid, "data"), { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" });
+      await setDoc(doc(db, "balances_" + uid, "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
+      alert("Akun berhasil dibuat!");
     } catch(err) { alert("Gagal: " + err.message); }
   };
 
+
+
+
+
   async function initData() {
-    onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
+    const uid = currentUser.uid;
+    
+    onSnapshot(doc(db, "profile_" + uid, "data"), (snap) => {
       if(snap.exists()) {
-        const u = snap.data();
-        const b = u.balances || {};
-        data.bank = b.bank || 0;
-        data.kas = b.kas || 0;
-        data.admin = b.admin || 0;
-        data.acc = b.acc || 0;
-        data.tarik = b.tarik || 0;
-        data.depo = b.depo || 0;
-
-        data.profile = u.profile || {};
-        if(!data.profile.categories) {
-          data.profile.categories = ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"];
-        }
-        
+        data.profile = snap.data();
+        if(!data.profile.categories) data.profile.categories = ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"];
         document.getElementById('profToko').value = data.profile.toko || '';
-
-
         document.getElementById('profEmail').value = data.profile.email || '';
         document.getElementById('profDefaultKat').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('profDefaultKat').value = data.profile.defaultCategory || data.profile.categories[0];
-        
-
         document.getElementById('kategori').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('kategori').value = data.profile.defaultCategory || data.profile.categories[0];
-        
-        document.getElementById('filterKat').innerHTML = '<option value="">Semua Kategori</option>' + data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-
-        // Render Edit Category Inputs
-
-        document.getElementById('editKatList').innerHTML = data.profile.categories.map((c, i) => `
-          <div class="form-group">
-            <input type="text" class="form-control kat-input" data-index="${i}" value="${c}">
-          </div>
-        `).join('');
-
+        document.getElementById('filterKat').innerHTML = '<option value="">Kategori</option>' + data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        document.getElementById('editKatList').innerHTML = data.profile.categories.map((c, i) => `<div class="form-group"><input type="text" class="form-control kat-input" data-index="${i}" value="${c}"></div>`).join('');
         updateUI();
-
       }
     });
-    onSnapshot(collection(db, "users", currentUser.uid, "kontak"), (snap) => {
+
+    onSnapshot(doc(db, "balances_" + uid, "data"), (snap) => {
+      if(snap.exists()) {
+        const b = snap.data();
+        data.bank = b.bank || 0; data.kas = b.kas || 0; data.admin = b.admin || 0;
+        data.acc = b.acc || 0; data.tarik = b.tarik || 0; data.depo = b.depo || 0;
+        updateUI();
+      }
+    });
+
+    onSnapshot(collection(db, "kontak_" + uid), (snap) => {
       data.kontak = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKontak();
     });
-    onSnapshot(query(collection(db, "users", currentUser.uid, "history"), orderBy("tgl", "desc"), limit(50)), (snap) => {
+
+    onSnapshot(query(collection(db, "history_" + uid), orderBy("tgl", "desc"), limit(100)), (snap) => {
       data.history = snap.docs.map(d => d.data()); renderRiwayat();
     });
 
-    onSnapshot(collection(db, "users", currentUser.uid, "kasbon"), (snap) => {
+    onSnapshot(collection(db, "kasbon_" + uid), (snap) => {
       data.kasbon = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKasbon();
     });
   }
+
+
 
 
   function formatRp(v) { return 'Rp ' + (v || 0).toLocaleString('id-ID'); }
@@ -459,63 +453,87 @@
 
       if(nom <= 0) return alert("Nominal harus diisi");
 
+
+
       if(["Seabank", "Dana", "Orderkuota"].includes(kat)) { data.kas += nom; data.bank -= nom; data.admin += fee; }
       else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
       else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
 
-      await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
+      await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
       await syncBalances();
       alert("Transaksi Berhasil!");
+
+
       tutupSemuaModal();
       e.target.reset();
     } catch(err) { alert("Gagal Simpan: " + err.message); }
   };
 
 
+
+
   async function syncBalances() {
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      balances: { bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo }
+    await setDoc(doc(db, "balances_" + currentUser.uid, "data"), {
+      bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo
     });
   }
+
+
 
 
   window.tambahKasbon = async () => {
     if(!currentUser) return;
     try {
+
+
       const nama = document.getElementById('kasbonNama').value;
       const nom = getInt('kasbonNominal');
       if(!nama || nom <= 0) return alert("Nama & Nominal harus diisi");
-      await addDoc(collection(db, "users", currentUser.uid, "kasbon"), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
+      await addDoc(collection(db, "kasbon_" + currentUser.uid), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
       document.getElementById('kasbonNama').value = ''; document.getElementById('kasbonNominal').value = '';
       alert("Kasbon Ditambahkan!");
+
+
     } catch(err) { alert("Gagal: " + err.message); }
   };
+
+
 
 
   window.bayarKasbon = async (id) => {
     const k = data.kasbon.find(x => x.id === id);
     data.kas += k.nominal;
-    await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
-    await deleteDoc(doc(db, "users", currentUser.uid, "kasbon", id));
+    await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
+    await deleteDoc(doc(db, "kasbon_" + currentUser.uid, id));
 
     await syncBalances();
   };
 
 
+
+
   window.tambahKontak = async () => {
     if(!currentUser) return;
     try {
+
+
       const nama = document.getElementById('kontakNama').value;
       const wa = document.getElementById('kontakWA').value;
       if(!nama || !wa) return alert("Nama & Nomor harus diisi");
-      await addDoc(collection(db, "users", currentUser.uid, "kontak"), { nama, wa, createdAt: new Date().toISOString() });
+      await addDoc(collection(db, "kontak_" + currentUser.uid), { nama, wa, createdAt: new Date().toISOString() });
       document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
       alert("Kontak Tersimpan!");
+
+
     } catch(err) { alert("Gagal: " + err.message); }
   };
 
 
-  window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, "users", currentUser.uid, "kontak", id)); };
+
+
+  window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, "kontak_" + currentUser.uid, id)); };
+
+
 
 
 
@@ -524,13 +542,17 @@
     try {
       const t = document.getElementById('depoTujuan').value;
       const n = getInt('depoNominal');
+
+
       if(n <= 0) return alert("Nominal harus diisi");
       if(t==='bank') data.bank += n; else data.kas += n;
       data.depo += n;
-      await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
+      await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
       await syncBalances(); 
       alert("Deposit Berhasil!");
       tutupSemuaModal();
+
+
     } catch(err) { alert("Gagal: " + err.message); }
   };
 
@@ -543,13 +565,18 @@
     const katInputs = document.querySelectorAll('.kat-input');
     const newCategories = Array.from(katInputs).map(input => input.value);
     
+
+
     try {
-      await updateDoc(doc(db, "users", currentUser.uid), {
-        "profile.toko": toko,
-        "profile.defaultCategory": defKat,
-        "profile.categories": newCategories
+      const uid = currentUser.uid;
+      await updateDoc(doc(db, "profile_" + uid, "data"), {
+        "toko": toko,
+        "defaultCategory": defKat,
+        "categories": newCategories
       });
       if(pass) await updatePassword(currentUser, pass);
+
+
       alert("Profil & Kategori Berhasil Diperbarui!");
       tutupSemuaModal();
     } catch (err) { alert("Error: " + err.message); }
@@ -557,7 +584,14 @@
 
 
 
+  window.resetFilter = () => {
+    document.getElementById('filterKat').value = "";
+    document.getElementById('filterTgl').value = "";
+    renderRiwayat();
+  };
+
   window.logout = () => signOut(auth);
+
   window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
   window.tutupSemuaModal = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   window.toggleMode = () => document.body.classList.toggle('dark');
