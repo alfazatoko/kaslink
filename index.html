@@ -236,13 +236,23 @@
         <option value="Seabank">Seabank</option>
         <option value="Dana">Dana</option>
         <option value="Orderkuota">Orderkuota</option>
-        <option value="Tarik Tunai">Tarik Tunai</option>
-        <option value="Aksesoris">Aksesoris</option>
       </select>
     </div>
     <div class="form-group"><label>Email</label><input type="text" id="profEmail" class="form-control" readonly></div>
-    <div class="form-group"><label>Password Baru</label><input type="password" id="profPass" class="form-control" placeholder="••••••••"></div>
+
+    <div class="form-group">
+      <label>Password Baru (Kosongkan jika tidak ganti)</label>
+      <div class="password-wrapper">
+        <input type="password" id="profPass" class="form-control" placeholder="••••••••">
+        <span class="eye-icon" onclick="togglePass('profPass')">👁️</span>
+      </div>
+    </div>
+    <div class="form-group" style="border:1px solid var(--border); padding:15px; border-radius:15px; margin-top:10px">
+      <label style="color:var(--accent)">🏷️ EDIT NAMA KATEGORI</label>
+      <div id="editKatList"></div>
+    </div>
     <button class="btn-submit" onclick="updateProfil()">UPDATE PROFIL</button>
+
     <button class="btn-submit" style="background:var(--danger); margin-top:10px" onclick="logout()">KELUAR AKUN</button>
   </div>
 </div>
@@ -327,13 +337,31 @@
         data.acc = b.acc || 0;
         data.tarik = b.tarik || 0;
         data.depo = b.depo || 0;
+
         data.profile = u.profile || {};
+        if(!data.profile.categories) {
+          data.profile.categories = ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"];
+        }
         
         document.getElementById('profToko').value = data.profile.toko || '';
+
+
         document.getElementById('profEmail').value = data.profile.email || '';
-        document.getElementById('profDefaultKat').value = data.profile.defaultCategory || 'Seabank';
-        document.getElementById('kategori').value = data.profile.defaultCategory || 'Seabank';
+        document.getElementById('profDefaultKat').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        document.getElementById('profDefaultKat').value = data.profile.defaultCategory || data.profile.categories[0];
+        
+        document.getElementById('kategori').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        document.getElementById('kategori').value = data.profile.defaultCategory || data.profile.categories[0];
+        
+        // Render Edit Category Inputs
+        document.getElementById('editKatList').innerHTML = data.profile.categories.map((c, i) => `
+          <div class="form-group">
+            <input type="text" class="form-control kat-input" data-index="${i}" value="${c}">
+          </div>
+        `).join('');
+
         updateUI();
+
       }
     });
     onSnapshot(query(collection(db, "users", currentUser.uid, "history"), orderBy("tgl", "desc"), limit(50)), (snap) => {
@@ -409,14 +437,26 @@
     await syncBalances(); tutupSemuaModal();
   };
 
+
   window.updateProfil = async () => {
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      "profile.toko": document.getElementById('profToko').value,
-      "profile.defaultCategory": document.getElementById('profDefaultKat').value
-    });
-    if(document.getElementById('profPass').value) await updatePassword(currentUser, document.getElementById('profPass').value);
-    alert("Berhasil!"); tutupSemuaModal();
+    const toko = document.getElementById('profToko').value;
+    const defKat = document.getElementById('profDefaultKat').value;
+    const pass = document.getElementById('profPass').value;
+    const katInputs = document.querySelectorAll('.kat-input');
+    const newCategories = Array.from(katInputs).map(input => input.value);
+    
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        "profile.toko": toko,
+        "profile.defaultCategory": defKat,
+        "profile.categories": newCategories
+      });
+      if(pass) await updatePassword(currentUser, pass);
+      alert("Profil & Kategori Berhasil Diperbarui!");
+      tutupSemuaModal();
+    } catch (err) { alert("Error: " + err.message); }
   };
+
 
   window.logout = () => signOut(auth);
   window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
