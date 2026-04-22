@@ -368,6 +368,9 @@
     catch(err) { alert("Gagal: " + err.message); }
   };
 
+  window.handleRegister = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('regEmail').value;
     try {
       const res = await createUserWithEmailAndPassword(auth, email, document.getElementById('regPassword').value);
       const uid = res.user.uid;
@@ -376,6 +379,7 @@
       alert("Akun berhasil dibuat!");
     } catch(err) { alert("Gagal: " + err.message); }
   };
+
 
 
 
