@@ -374,11 +374,13 @@
     try {
       const res = await createUserWithEmailAndPassword(auth, email, document.getElementById('regPassword').value);
       const uid = res.user.uid;
-      await setDoc(doc(db, "profile_" + uid, "data"), { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" });
-      await setDoc(doc(db, "balances_" + uid, "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
+      await setDoc(doc(db, uid + "_profile", "data"), { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" });
+      await setDoc(doc(db, uid + "_balances", "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
       alert("Akun berhasil dibuat!");
+
     } catch(err) { alert("Gagal: " + err.message); }
   };
+
 
 
 
@@ -388,7 +390,7 @@
   async function initData() {
     const uid = currentUser.uid;
     
-    onSnapshot(doc(db, "profile_" + uid, "data"), (snap) => {
+    onSnapshot(doc(db, uid + "_profile", "data"), (snap) => {
       if(snap.exists()) {
         data.profile = snap.data();
         if(!data.profile.categories) data.profile.categories = ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"];
@@ -404,7 +406,7 @@
       }
     });
 
-    onSnapshot(doc(db, "balances_" + uid, "data"), (snap) => {
+    onSnapshot(doc(db, uid + "_balances", "data"), (snap) => {
       if(snap.exists()) {
         const b = snap.data();
         data.bank = b.bank || 0; data.kas = b.kas || 0; data.admin = b.admin || 0;
@@ -413,18 +415,19 @@
       }
     });
 
-    onSnapshot(collection(db, "kontak_" + uid), (snap) => {
+    onSnapshot(collection(db, uid + "_kontak"), (snap) => {
       data.kontak = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKontak();
     });
 
-    onSnapshot(query(collection(db, "history_" + uid), orderBy("tgl", "desc"), limit(100)), (snap) => {
+    onSnapshot(query(collection(db, uid + "_history"), orderBy("tgl", "desc"), limit(100)), (snap) => {
       data.history = snap.docs.map(d => d.data()); renderRiwayat();
     });
 
-    onSnapshot(collection(db, "kasbon_" + uid), (snap) => {
+    onSnapshot(collection(db, uid + "_kasbon"), (snap) => {
       data.kasbon = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKasbon();
     });
   }
+
 
 
 
@@ -463,7 +466,9 @@
       else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
       else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
 
-      await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
+
+      await addDoc(collection(db, currentUser.uid + "_history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
+
       await syncBalances();
       alert("Transaksi Berhasil!");
 
@@ -476,11 +481,13 @@
 
 
 
+
   async function syncBalances() {
-    await setDoc(doc(db, "balances_" + currentUser.uid, "data"), {
+    await setDoc(doc(db, currentUser.uid + "_balances", "data"), {
       bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo
     });
   }
+
 
 
 
@@ -490,12 +497,14 @@
     try {
 
 
+
       const nama = document.getElementById('kasbonNama').value;
       const nom = getInt('kasbonNominal');
       if(!nama || nom <= 0) return alert("Nama & Nominal harus diisi");
-      await addDoc(collection(db, "kasbon_" + currentUser.uid), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
+      await addDoc(collection(db, currentUser.uid + "_kasbon"), { nama, nominal: nom, tgl: new Date().toLocaleDateString('id-ID') });
       document.getElementById('kasbonNama').value = ''; document.getElementById('kasbonNominal').value = '';
       alert("Kasbon Ditambahkan!");
+
 
 
     } catch(err) { alert("Gagal: " + err.message); }
@@ -505,10 +514,12 @@
 
 
   window.bayarKasbon = async (id) => {
+
     const k = data.kasbon.find(x => x.id === id);
     data.kas += k.nominal;
-    await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
-    await deleteDoc(doc(db, "kasbon_" + currentUser.uid, id));
+    await addDoc(collection(db, currentUser.uid + "_history"), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
+    await deleteDoc(doc(db, currentUser.uid + "_kasbon", id));
+
 
     await syncBalances();
   };
@@ -521,12 +532,14 @@
     try {
 
 
+
       const nama = document.getElementById('kontakNama').value;
       const wa = document.getElementById('kontakWA').value;
       if(!nama || !wa) return alert("Nama & Nomor harus diisi");
-      await addDoc(collection(db, "kontak_" + currentUser.uid), { nama, wa, createdAt: new Date().toISOString() });
+      await addDoc(collection(db, currentUser.uid + "_kontak"), { nama, wa, createdAt: new Date().toISOString() });
       document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
       alert("Kontak Tersimpan!");
+
 
 
     } catch(err) { alert("Gagal: " + err.message); }
@@ -535,7 +548,9 @@
 
 
 
-  window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, "kontak_" + currentUser.uid, id)); };
+
+  window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, currentUser.uid + "_kontak", id)); };
+
 
 
 
@@ -548,11 +563,13 @@
       const n = getInt('depoNominal');
 
 
+
       if(n <= 0) return alert("Nominal harus diisi");
       if(t==='bank') data.bank += n; else data.kas += n;
       data.depo += n;
-      await addDoc(collection(db, "history_" + currentUser.uid), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
+      await addDoc(collection(db, currentUser.uid + "_history"), { tgl: new Date().toISOString(), kat: 'DEPOSIT', ket: 'Topup '+t, amt: n });
       await syncBalances(); 
+
       alert("Deposit Berhasil!");
       tutupSemuaModal();
 
@@ -571,14 +588,16 @@
     
 
 
+
     try {
       const uid = currentUser.uid;
-      await updateDoc(doc(db, "profile_" + uid, "data"), {
+      await updateDoc(doc(db, uid + "_profile", "data"), {
         "toko": toko,
         "defaultCategory": defKat,
         "categories": newCategories
       });
       if(pass) await updatePassword(currentUser, pass);
+
 
 
       alert("Profil & Kategori Berhasil Diperbarui!");
