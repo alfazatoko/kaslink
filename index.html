@@ -105,11 +105,17 @@
       <h1 style="font-size:32px; font-weight:900; color:var(--accent); letter-spacing:-1px">KASLINK</h1>
       <p style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:1px">Pembukuan Kasir Agen Brilink</p>
     </div>
+
     <div id="loginPanel">
       <div class="modal-title">🔐 Masuk Akun</div>
       <form onsubmit="handleLogin(event)">
         <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" placeholder="owner@kaslink.id" required></div>
-        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required></div>
+        <div class="form-group"><label>Password</label>
+          <div class="password-wrapper" style="position:relative">
+            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+            <span class="eye-icon" style="position:absolute; right:15px; top:12px; cursor:pointer" onclick="togglePass('loginPassword')">👁️</span>
+          </div>
+        </div>
         <button type="submit" class="btn-submit">MASUK KE KASIR</button>
       </form>
       <p style="text-align:center; margin-top:20px; font-size:13px">Belum ada akun? <a href="#" onclick="toggleAuth(true)" style="color:var(--accent); font-weight:800">Daftar</a></p>
@@ -119,11 +125,17 @@
       <form onsubmit="handleRegister(event)">
         <div class="form-group"><label>Email</label><input type="email" id="regEmail" class="form-control" required></div>
         <div class="form-group"><label>WhatsApp</label><input type="tel" id="regPhone" class="form-control" required></div>
-        <div class="form-group"><label>Password</label><input type="password" id="regPassword" class="form-control" required></div>
+        <div class="form-group"><label>Password</label>
+          <div class="password-wrapper" style="position:relative">
+            <input type="password" id="regPassword" class="form-control" required>
+            <span class="eye-icon" style="position:absolute; right:15px; top:12px; cursor:pointer" onclick="togglePass('regPassword')">👁️</span>
+          </div>
+        </div>
         <button type="submit" class="btn-submit">BUAT AKUN</button>
       </form>
       <p style="text-align:center; margin-top:20px; font-size:13px">Sudah punya akun? <a href="#" onclick="toggleAuth(false)" style="color:var(--accent); font-weight:800">Login</a></p>
     </div>
+
   </div>
 </div>
 
@@ -247,11 +259,12 @@
 
     <div class="form-group">
       <label>Password Baru (Kosongkan jika tidak ganti)</label>
-      <div class="password-wrapper">
+      <div class="password-wrapper" style="position:relative">
         <input type="password" id="profPass" class="form-control" placeholder="••••••••">
-        <span class="eye-icon" onclick="togglePass('profPass')">👁️</span>
+        <span class="eye-icon" style="position:absolute; right:15px; top:12px; cursor:pointer" onclick="togglePass('profPass')">👁️</span>
       </div>
     </div>
+
     <div class="form-group" style="border:1px solid var(--border); padding:15px; border-radius:15px; margin-top:10px">
       <label style="color:var(--accent)">🏷️ EDIT NAMA KATEGORI</label>
       <div id="editKatList"></div>
@@ -299,12 +312,20 @@
 
 
 
+
 <div class="modal" id="modalRiwayat">
   <div class="modal-card">
     <div class="modal-title">📜 Riwayat <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div style="display:flex; gap:8px; margin-bottom:15px">
+      <select id="filterKat" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
+        <option value="">Semua Kategori</option>
+      </select>
+      <input type="date" id="filterTgl" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
+    </div>
     <div id="listRiwayat"></div>
   </div>
 </div>
+
 
 <div class="modal" id="modalLaporan">
   <div class="modal-card">
@@ -379,10 +400,14 @@
         document.getElementById('profDefaultKat').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('profDefaultKat').value = data.profile.defaultCategory || data.profile.categories[0];
         
+
         document.getElementById('kategori').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('kategori').value = data.profile.defaultCategory || data.profile.categories[0];
         
+        document.getElementById('filterKat').innerHTML = '<option value="">Semua Kategori</option>' + data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
         // Render Edit Category Inputs
+
         document.getElementById('editKatList').innerHTML = data.profile.categories.map((c, i) => `
           <div class="form-group">
             <input type="text" class="form-control kat-input" data-index="${i}" value="${c}">
@@ -531,21 +556,34 @@
   };
 
 
+
   window.logout = () => signOut(auth);
   window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
   window.tutupSemuaModal = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
   window.toggleMode = () => document.body.classList.toggle('dark');
+  window.togglePass = (id) => {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+  };
   window.toggleLandscape = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
   window.toggleScale = () => { document.body.style.maxWidth = document.body.style.maxWidth === '600px' ? '100%' : '600px'; document.body.style.margin = '0 auto'; };
 
   function renderRiwayat() {
-    document.getElementById('listRiwayat').innerHTML = data.history.map(h => `
+    const fk = document.getElementById('filterKat').value;
+    const ft = document.getElementById('filterTgl').value;
+    
+    let filtered = data.history;
+    if(fk) filtered = filtered.filter(h => h.kat === fk);
+    if(ft) filtered = filtered.filter(h => h.tgl.startsWith(ft));
+
+    document.getElementById('listRiwayat').innerHTML = filtered.map(h => `
       <div class="history-item">
         <div class="history-info"><div>${h.ket}</div><div>${new Date(h.tgl).toLocaleString('id-ID')}</div></div>
         <div class="history-amt amt-plus">+${formatRp(h.amt)}</div>
       </div>
     `).join('');
   }
+
 
   function renderKasbon() {
     document.getElementById('listKasbon').innerHTML = data.kasbon.map(k => `
@@ -569,12 +607,42 @@
   }
 
 
+
   window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
   window.bukaLaporan = () => {
-    document.getElementById('kontenLaporan').innerHTML = `<div style="background:var(--accent-light); padding:20px; border-radius:20px; margin-bottom:15px"><div>TOTAL LABA</div><div style="font-size:24px; font-weight:800">${formatRp(data.admin+data.acc)}</div></div>
-    <div class="history-item"><span>Laba Admin</span> <b>${formatRp(data.admin)}</b></div><div class="history-item"><span>Laba Acc</span> <b>${formatRp(data.acc)}</b></div>`;
+    const stats = {};
+    let totalPenjualan = 0;
+    data.history.forEach(h => {
+      if(!stats[h.kat]) stats[h.kat] = { count: 0, total: 0 };
+      stats[h.kat].count++;
+      stats[h.kat].total += h.amt;
+      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON') totalPenjualan += h.amt;
+    });
+
+    let catListHtml = Object.keys(stats).map(k => `
+      <div class="history-item" style="font-size:12px">
+        <span>${k} (${stats[k].count}x)</span> <b>${formatRp(stats[k].total)}</b>
+      </div>
+    `).join('');
+
+    const kasAkhir = (totalPenjualan - data.tarik) + data.admin + data.acc;
+
+    document.getElementById('kontenLaporan').innerHTML = `
+      <div style="background:var(--accent-light); padding:15px; border-radius:20px; margin-bottom:15px">
+        <div style="font-size:11px; font-weight:700; color:var(--accent)">TOTAL KAS AKHIR</div>
+        <div style="font-size:24px; font-weight:800">${formatRp(kasAkhir)}</div>
+      </div>
+      <div style="margin-bottom:15px">${catListHtml}</div>
+      <div style="border-top:1px dashed var(--border); padding-top:10px">
+        <div class="history-item" style="font-size:12px"><span>Total Penjualan</span> <b>${formatRp(totalPenjualan)}</b></div>
+        <div class="history-item" style="font-size:12px"><span>Tarik Tunai (-)</span> <b>${formatRp(data.tarik)}</b></div>
+        <div class="history-item" style="font-size:12px"><span>Laba Admin (+)</span> <b>${formatRp(data.admin)}</b></div>
+        <div class="history-item" style="font-size:12px"><span>Laba Acc (+)</span> <b>${formatRp(data.acc)}</b></div>
+      </div>
+    `;
     bukaModal('modalLaporan');
   };
+
 
 
   setInterval(() => { 
