@@ -135,7 +135,9 @@
       <div class="brand-text">
         <h3>KASLINK</h3>
         <p>Pembukuan Kasir Agen Brilink</p>
+        <div id="fullDate" style="font-size:10px; font-weight:700; color:var(--accent); margin-top:2px">Hari, 00 Bln 0000</div>
       </div>
+
     </div>
     <div class="header-right">
       <div id="jam" class="time-display">00.00.00</div>
@@ -222,8 +224,14 @@
       </div>
       <div class="form-group"><label>Nominal (Rp)</label><input type="text" id="nominal" class="form-control" inputmode="numeric" oninput="formatInput(this)" placeholder="0" required></div>
       <div class="form-group"><label>Admin Fee (Laba)</label><input type="text" id="adminFee" class="form-control" inputmode="numeric" oninput="formatInput(this)" value="0"></div>
+
       <div class="form-group"><label>Keterangan</label><input type="text" id="keterangan" class="form-control" placeholder="..."></div>
+      <div class="form-group">
+        <label>Foto Struk / Bukti (Kamera Live)</label>
+        <input type="file" id="transaksiPhoto" class="form-control" accept="image/*" capture="environment">
+      </div>
       <button type="submit" class="btn-submit">SIMPAN TRANSAKSI</button>
+
     </form>
   </div>
 </div>
@@ -273,9 +281,21 @@
     <div class="modal-title">🏦 Tambah Saldo <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
     <div class="form-group"><label>Tujuan</label><select id="depoTujuan" class="form-control"><option value="bank">Saldo Bank</option><option value="kas">Kas Tunai</option></select></div>
     <div class="form-group"><label>Nominal</label><input type="text" id="depoNominal" class="form-control" inputmode="numeric" oninput="formatInput(this)"></div>
+
     <button class="btn-submit" onclick="simpanDeposit()">SIMPAN DEPOSIT</button>
   </div>
 </div>
+
+<div class="modal" id="modalKontak">
+  <div class="modal-card">
+    <div class="modal-title">👥 Kontak & Catatan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="listKontak" style="max-height:200px; overflow-y:auto; margin-bottom:15px"></div>
+    <div class="form-group"><label>Nama / Ket</label><input type="text" id="kontakNama" class="form-control"></div>
+    <div class="form-group"><label>No HP / Rekening</label><input type="text" id="kontakWA" class="form-control"></div>
+    <button class="btn-submit" onclick="tambahKontak()">SIMPAN KONTAK</button>
+  </div>
+</div>
+
 
 <div class="modal" id="modalRiwayat">
   <div class="modal-card">
@@ -371,9 +391,13 @@
 
       }
     });
+    onSnapshot(collection(db, "users", currentUser.uid, "kontak"), (snap) => {
+      data.kontak = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKontak();
+    });
     onSnapshot(query(collection(db, "users", currentUser.uid, "history"), orderBy("tgl", "desc"), limit(50)), (snap) => {
       data.history = snap.docs.map(d => d.data()); renderRiwayat();
     });
+
     onSnapshot(collection(db, "users", currentUser.uid, "kasbon"), (snap) => {
       data.kasbon = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKasbon();
     });
@@ -432,8 +456,20 @@
     data.kas += k.nominal;
     await addDoc(collection(db, "users", currentUser.uid, "history"), { tgl: new Date().toISOString(), kat: 'KASBON', ket: 'Pelunasan '+k.nama, amt: k.nominal });
     await deleteDoc(doc(db, "users", currentUser.uid, "kasbon", id));
+
     await syncBalances();
   };
+
+  window.tambahKontak = async () => {
+    const nama = document.getElementById('kontakNama').value;
+    const wa = document.getElementById('kontakWA').value;
+    if(!nama || !wa) return;
+    await addDoc(collection(db, "users", currentUser.uid, "kontak"), { nama, wa, createdAt: new Date().toISOString() });
+    document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
+  };
+
+  window.hapusKontak = async (id) => { if(confirm("Hapus?")) await deleteDoc(doc(db, "users", currentUser.uid, "kontak", id)); };
+
 
   window.simpanDeposit = async () => {
     const t = document.getElementById('depoTujuan').value;
@@ -480,6 +516,7 @@
       </div>
     `).join('');
   }
+
   function renderKasbon() {
     document.getElementById('listKasbon').innerHTML = data.kasbon.map(k => `
       <div class="history-item">
@@ -488,6 +525,15 @@
       </div>
     `).join('');
   }
+  function renderKontak() {
+    document.getElementById('listKontak').innerHTML = data.kontak.map(k => `
+      <div class="history-item">
+        <div class="history-info"><div>${k.nama}</div><div>${k.wa}</div></div>
+        <button onclick="hapusKontak('${k.id}')" style="background:var(--danger); color:white; border:none; padding:4px 8px; border-radius:6px">HAPUS</button>
+      </div>
+    `).join('');
+  }
+
   window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
   window.bukaLaporan = () => {
     document.getElementById('kontenLaporan').innerHTML = `<div style="background:var(--accent-light); padding:20px; border-radius:20px; margin-bottom:15px"><div>TOTAL LABA</div><div style="font-size:24px; font-weight:800">${formatRp(data.admin+data.acc)}</div></div>
@@ -495,7 +541,14 @@
     bukaModal('modalLaporan');
   };
 
-  setInterval(() => { document.getElementById('jam').innerText = new Date().toLocaleTimeString('id-ID'); }, 1000);
+
+  setInterval(() => { 
+    const now = new Date();
+    document.getElementById('jam').innerText = now.toLocaleTimeString('id-ID'); 
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('fullDate').innerText = now.toLocaleDateString('id-ID', options);
+  }, 1000);
+
 </script>
 </body>
 </html>
