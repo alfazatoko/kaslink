@@ -2,8 +2,9 @@
   "name": "KASLINK",
   "short_name": "KASLINK",
   "description": "Pembukuan Kasir Agen Brilink",
-  "start_url": "/index.html",
+  "start_url": "/beranda",
   "display": "standalone",
+
   "background_color": "#f5f7fa",
   "theme_color": "#2563eb",
   "icons": [

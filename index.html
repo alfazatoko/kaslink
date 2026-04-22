@@ -295,7 +295,13 @@
   import { auth, db, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
   import { updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+  // URL Cleanup / Routing
+  if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+    window.history.replaceState({}, '', '/beranda');
+  }
+
   let currentUser = null;
+
   let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, history:[], kasbon:[], kontak:[], profile:{} };
 
   onAuthStateChanged(auth, (user) => {
