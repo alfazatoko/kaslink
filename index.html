@@ -320,11 +320,19 @@
     onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
       if(snap.exists()) {
         const u = snap.data();
-        data = { ...data, ...u.balances, profile: u.profile };
-        document.getElementById('profToko').value = u.profile.toko || '';
-        document.getElementById('profEmail').value = u.profile.email || '';
-        document.getElementById('profDefaultKat').value = u.profile.defaultCategory || 'Seabank';
-        document.getElementById('kategori').value = u.profile.defaultCategory || 'Seabank';
+        const b = u.balances || {};
+        data.bank = b.bank || 0;
+        data.kas = b.kas || 0;
+        data.admin = b.admin || 0;
+        data.acc = b.acc || 0;
+        data.tarik = b.tarik || 0;
+        data.depo = b.depo || 0;
+        data.profile = u.profile || {};
+        
+        document.getElementById('profToko').value = data.profile.toko || '';
+        document.getElementById('profEmail').value = data.profile.email || '';
+        document.getElementById('profDefaultKat').value = data.profile.defaultCategory || 'Seabank';
+        document.getElementById('kategori').value = data.profile.defaultCategory || 'Seabank';
         updateUI();
       }
     });
@@ -335,6 +343,7 @@
       data.kasbon = snap.docs.map(d => ({id:d.id, ...d.data()})); renderKasbon();
     });
   }
+
 
   function formatRp(v) { return 'Rp ' + (v || 0).toLocaleString('id-ID'); }
   window.formatInput = (el) => {
