@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
     :root {
@@ -352,6 +353,10 @@
   <div class="modal-card">
     <div class="modal-title">📊 Laporan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
     <div id="kontenLaporan"></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px">
+      <button class="btn-submit" style="background:#f1f5f9; color:var(--text); box-shadow:none" onclick="exportPDF('download')">📥 Download PDF</button>
+      <button class="btn-submit" onclick="exportPDF('share')">📤 Share PDF</button>
+    </div>
   </div>
 </div>
 
@@ -745,6 +750,70 @@
   };
 
 
+
+  window.exportPDF = async (type) => {
+    const element = document.createElement('div');
+    element.style.padding = '30px';
+    element.style.background = 'white';
+    element.style.color = 'black';
+    element.style.fontFamily = 'Plus Jakarta Sans, sans-serif';
+    
+    const logoUrl = document.getElementById('headerLogo').src;
+    const toko = data.profile.toko || 'KINK';
+    const date = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    element.innerHTML = `
+      <div style="text-align:center; margin-bottom:30px; border-bottom:2px solid #2563eb; padding-bottom:20px">
+        <h1 style="color:#2563eb; margin:0">${toko}</h1>
+        <p style="color:#64748b; margin:5px 0 0 0">Laporan Keuangan & Riwayat Transaksi</p>
+        <p style="font-size:12px; color:#94a3b8">${date}</p>
+      </div>
+      ${document.getElementById('kontenLaporan').innerHTML}
+      <div style="margin-top:30px">
+        <h3 style="border-bottom:1px solid #e2e8f0; padding-bottom:10px">Daftar Riwayat</h3>
+        ${data.history.map(h => `
+          <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:12px">
+            <div>
+              <div style="font-weight:700">${h.ket}</div>
+              <div style="color:#64748b; font-size:10px">${new Date(h.tgl).toLocaleString('id-ID')}</div>
+            </div>
+            <div style="font-weight:800; color:#10b981">+Rp ${h.amt.toLocaleString('id-ID')}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:40px; text-align:center; font-size:10px; color:#94a3b8">
+        Dicetak otomatis oleh Sistem Kasir KINK
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: `Laporan_KINK_${new Date().getTime()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    if (type === 'download') {
+      html2pdf().set(opt).from(element).save();
+    } else if (type === 'share') {
+      const pdfBlob = await html2pdf().set(opt).from(element).outputBlob();
+      const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Laporan KINK',
+            text: 'Berikut adalah laporan keuangan Kasir KINK.'
+          });
+        } catch (err) { console.log('Share canceled', err); }
+      } else {
+        alert("Browser tidak mendukung berbagi file langsung. File akan di-download.");
+        html2pdf().set(opt).from(element).save();
+      }
+    }
+  };
 
   setInterval(() => { 
     const now = new Date();
