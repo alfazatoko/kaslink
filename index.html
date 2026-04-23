@@ -285,8 +285,8 @@
     </div>
 
     <div class="form-group" style="border:1px solid var(--border); padding:15px; border-radius:15px; margin-top:10px">
-      <label style="color:var(--accent)">🏷️ EDIT NAMA KATEGORI</label>
-      <div id="editKatList"></div>
+      <label style="color:var(--accent)">🏷️ PENGATURAN KATEGORI</label>
+      <div id="editKatList" style="display:flex; flex-direction:column; gap:10px"></div>
     </div>
     <button class="btn-submit" onclick="updateProfil()">UPDATE PROFIL</button>
 
@@ -437,15 +437,39 @@
     onSnapshot(doc(db, uid + "_profile", "data"), (snap) => {
       if(snap.exists()) {
         data.profile = snap.data();
-        if(!data.profile.categories) data.profile.categories = ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"];
+        if(!data.profile.categories) {
+          // Migration to new structure if old structure exists
+          data.profile.categories = [
+            { name: "Seabank", role: "bank_out" },
+            { name: "Dana", role: "bank_out" },
+            { name: "Orderkuota", role: "bank_out" },
+            { name: "Tarik Tunai", role: "bank_in" },
+            { name: "Aksesoris", role: "cash_in" }
+          ];
+        }
+        
+        const cats = data.profile.categories;
         document.getElementById('profToko').value = data.profile.toko || '';
         document.getElementById('profEmail').value = data.profile.email || '';
-        document.getElementById('profDefaultKat').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-        document.getElementById('profDefaultKat').value = data.profile.defaultCategory || data.profile.categories[0];
-        document.getElementById('kategori').innerHTML = data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-        document.getElementById('kategori').value = data.profile.defaultCategory || data.profile.categories[0];
-        document.getElementById('filterKat').innerHTML = '<option value="">Kategori</option>' + data.profile.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-        document.getElementById('editKatList').innerHTML = data.profile.categories.map((c, i) => `<div class="form-group"><input type="text" class="form-control kat-input" data-index="${i}" value="${c}"></div>`).join('');
+        
+        const catOptions = cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        document.getElementById('profDefaultKat').innerHTML = catOptions;
+        document.getElementById('profDefaultKat').value = data.profile.defaultCategory || cats[0].name;
+        document.getElementById('kategori').innerHTML = catOptions;
+        document.getElementById('kategori').value = data.profile.defaultCategory || cats[0].name;
+        document.getElementById('filterKat').innerHTML = '<option value="">Kategori</option>' + catOptions;
+        
+        document.getElementById('editKatList').innerHTML = cats.map((c, i) => `
+          <div style="background:var(--bg); padding:10px; border-radius:12px; border:1px solid var(--border)">
+            <input type="text" class="form-control kat-name" data-index="${i}" value="${c.name}" style="margin-bottom:5px" placeholder="Nama Kategori">
+            <select class="form-control kat-role" data-index="${i}" style="font-size:11px; padding:6px">
+              <option value="bank_out" ${c.role==='bank_out'?'selected':''}>Bank Out (Transfer/Isi Saldo)</option>
+              <option value="bank_in" ${c.role==='bank_in'?'selected':''}>Bank In (Tarik Tunai)</option>
+              <option value="cash_in" ${c.role==='cash_in'?'selected':''}>Cash In (Penjualan/Aksesoris)</option>
+              <option value="none" ${c.role==='none'?'selected':''}>Lainnya (Hanya Catat)</option>
+            </select>
+          </div>
+        `).join('');
         updateUI();
       }
     });
@@ -506,9 +530,12 @@
 
 
 
-      if(["Seabank", "Dana", "Orderkuota"].includes(kat)) { data.kas += nom; data.bank -= nom; data.admin += fee; }
-      else if(kat === "Aksesoris") { data.kas += nom; data.acc += nom; }
-      else if(kat === "Tarik Tunai") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
+      const selectedCat = data.profile.categories.find(c => c.name === kat);
+      const role = selectedCat ? selectedCat.role : 'none';
+
+      if(role === "bank_out") { data.kas += nom; data.bank -= nom; data.admin += fee; }
+      else if(role === "cash_in") { data.kas += nom; data.acc += nom; }
+      else if(role === "bank_in") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
 
 
       await addDoc(collection(db, currentUser.uid + "_history"), { tgl: new Date().toISOString(), kat, ket, amt: nom, fee });
@@ -629,8 +656,12 @@
     const toko = document.getElementById('profToko').value;
     const defKat = document.getElementById('profDefaultKat').value;
     const pass = document.getElementById('profPass').value;
-    const katInputs = document.querySelectorAll('.kat-input');
-    const newCategories = Array.from(katInputs).map(input => input.value);
+    const katNames = document.querySelectorAll('.kat-name');
+    const katRoles = document.querySelectorAll('.kat-role');
+    const newCategories = Array.from(katNames).map((input, i) => ({
+      name: input.value,
+      role: katRoles[i].value
+    }));
     
 
 
