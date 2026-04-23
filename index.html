@@ -668,18 +668,27 @@
 
     try {
       const uid = currentUser.uid;
-      await updateDoc(doc(db, uid + "_profile", "data"), {
+      await setDoc(doc(db, uid + "_profile", "data"), {
         "toko": toko,
         "defaultCategory": defKat,
         "categories": newCategories
-      });
-      if(pass) await updatePassword(currentUser, pass);
-
-
+      }, { merge: true });
+      if(pass) {
+        try {
+          await updatePassword(currentUser, pass);
+        } catch (pErr) {
+          if (pErr.code === 'auth/requires-recent-login') {
+            alert("Untuk ganti password, Anda perlu Login ulang demi keamanan.");
+            logout();
+            return;
+          }
+          throw pErr;
+        }
+      }
 
       alert("Profil & Kategori Berhasil Diperbarui!");
       tutupSemuaModal();
-    } catch (err) { alert("Error: " + err.message); }
+    } catch (err) { alert("Gagal Update: " + err.message); }
   };
 
 
