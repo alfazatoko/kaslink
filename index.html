@@ -97,6 +97,15 @@
     .divider:not(:empty)::before { margin-right: .5em; }
     .divider:not(:empty)::after { margin-left: .5em; }
     
+    /* PAGE VIEW SYSTEM */
+    .page-view { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 1500; padding-bottom: 100px; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    
+    .page-header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
+    .btn-back { width: 36px; height: 36px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+    .page-title { font-size: 16px; font-weight: 800; color: var(--text); }
+    .page-content { padding: 20px; }
+
     /* MISC */
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .history-info div:first-child { font-weight: 700; }
@@ -180,7 +189,7 @@
     </div>
   </div>
 
-  <div class="container">
+  <div id="view-beranda" class="container">
     <div class="balance-card card-blue">
       <div class="card-label">Saldo Bank <span class="rincian-btn" onclick="bukaRincianBank()">Rincian</span></div>
       <div id="saldoBankDisplay" class="card-value">Rp 0</div>
@@ -216,8 +225,74 @@
     </div>
   </div>
 
+  <!-- PAGE VIEWS -->
+  <div id="view-riwayat" class="page-view">
+    <div class="page-header">
+      <div class="btn-back" onclick="bukaHalaman('view-beranda')">←</div>
+      <div class="page-title">Riwayat Transaksi</div>
+    </div>
+    <div class="page-content">
+      <div style="display:flex; gap:8px; margin-bottom:15px; align-items:center">
+        <select id="filterKat" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
+          <option value="">Kategori</option>
+        </select>
+        <input type="date" id="filterTgl" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
+        <button onclick="renderRiwayat()" class="btn-submit" style="padding:8px 12px; width:auto; font-size:11px; height:38px">CARI</button>
+        <button onclick="resetFilter()" class="btn-submit" style="padding:8px 12px; width:auto; font-size:11px; height:38px; background:var(--danger)">RESET</button>
+      </div>
+      <div id="listRiwayat"></div>
+    </div>
+  </div>
+
+  <div id="view-laporan" class="page-view">
+    <div class="page-header">
+      <div class="btn-back" onclick="bukaHalaman('view-beranda')">←</div>
+      <div class="page-title">Laporan Keuangan</div>
+    </div>
+    <div class="page-content">
+      <div id="kontenLaporan"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px">
+        <button class="btn-submit" style="background:#f1f5f9; color:var(--text); box-shadow:none" onclick="exportPDF('download')">📥 Download PDF</button>
+        <button class="btn-submit" onclick="exportPDF('share')">📤 Share PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-akun" class="page-view">
+    <div class="page-header">
+      <div class="btn-back" onclick="bukaHalaman('view-beranda')">←</div>
+      <div class="page-title">Pengaturan Akun</div>
+    </div>
+    <div class="page-content">
+      <div class="form-group"><label>Nama Toko</label><input type="text" id="profToko" class="form-control"></div>
+      <div class="form-group"><label>Kategori Default</label>
+        <select id="profDefaultKat" class="form-control">
+          <option value="Seabank">Seabank</option>
+          <option value="Dana">Dana</option>
+          <option value="Orderkuota">Orderkuota</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Email</label><input type="text" id="profEmail" class="form-control" readonly></div>
+
+      <div class="form-group">
+        <label>Password Baru (Kosongkan jika tidak ganti)</label>
+        <div class="password-wrapper" style="position:relative">
+          <input type="password" id="profPass" class="form-control" placeholder="••••••••">
+          <span class="eye-icon" style="position:absolute; right:15px; top:12px; cursor:pointer" onclick="togglePass('profPass')">👁️</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="border:1px solid var(--border); padding:15px; border-radius:15px; margin-top:10px">
+        <label style="color:var(--accent)">🏷️ PENGATURAN KATEGORI</label>
+        <div id="editKatList" style="display:flex; flex-direction:column; gap:10px"></div>
+      </div>
+      <button class="btn-submit" onclick="updateProfil()">UPDATE PROFIL</button>
+      <button class="btn-submit" style="background:var(--danger); margin-top:10px" onclick="logout()">KELUAR AKUN</button>
+    </div>
+  </div>
+
   <div class="bottom-nav">
-    <div class="nav-item active" onclick="location.reload()">
+    <div class="nav-item active" onclick="bukaHalaman('view-beranda')">
       <span class="nav-icon">🏠</span>
       <div>Beranda</div>
     </div>
@@ -232,7 +307,7 @@
       <span class="nav-icon">📊</span>
       <div>Laporan</div>
     </div>
-    <div class="nav-item" onclick="bukaModal('modalAkun')">
+    <div class="nav-item" onclick="bukaHalaman('view-akun')">
       <span class="nav-icon">👤</span>
       <div>Akun</div>
     </div>
@@ -263,36 +338,7 @@
 </div>
 
 
-<div class="modal" id="modalAkun">
-  <div class="modal-card">
-    <div class="modal-title">👤 Profil & Pengaturan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
-    <div class="form-group"><label>Nama Toko</label><input type="text" id="profToko" class="form-control"></div>
-    <div class="form-group"><label>Kategori Default</label>
-      <select id="profDefaultKat" class="form-control">
-        <option value="Seabank">Seabank</option>
-        <option value="Dana">Dana</option>
-        <option value="Orderkuota">Orderkuota</option>
-      </select>
-    </div>
-    <div class="form-group"><label>Email</label><input type="text" id="profEmail" class="form-control" readonly></div>
-
-    <div class="form-group">
-      <label>Password Baru (Kosongkan jika tidak ganti)</label>
-      <div class="password-wrapper" style="position:relative">
-        <input type="password" id="profPass" class="form-control" placeholder="••••••••">
-        <span class="eye-icon" style="position:absolute; right:15px; top:12px; cursor:pointer" onclick="togglePass('profPass')">👁️</span>
-      </div>
-    </div>
-
-    <div class="form-group" style="border:1px solid var(--border); padding:15px; border-radius:15px; margin-top:10px">
-      <label style="color:var(--accent)">🏷️ PENGATURAN KATEGORI</label>
-      <div id="editKatList" style="display:flex; flex-direction:column; gap:10px"></div>
-    </div>
-    <button class="btn-submit" onclick="updateProfil()">UPDATE PROFIL</button>
-
-    <button class="btn-submit" style="background:var(--danger); margin-top:10px" onclick="logout()">KELUAR AKUN</button>
-  </div>
-</div>
+<!-- MODAL AKUN DIHAPUS KARENA SUDAH JADI HALAMAN -->
 
 <div class="modal" id="modalKasbon">
   <div class="modal-card">
@@ -333,32 +379,7 @@
 
 
 
-<div class="modal" id="modalRiwayat">
-  <div class="modal-card">
-    <div class="modal-title">📜 Riwayat <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
-    <div style="display:flex; gap:8px; margin-bottom:15px; align-items:center">
-      <select id="filterKat" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
-        <option value="">Kategori</option>
-      </select>
-      <input type="date" id="filterTgl" class="form-control" style="font-size:11px; padding:8px" onchange="renderRiwayat()">
-      <button onclick="resetFilter()" class="btn-submit" style="padding:8px 12px; width:auto; font-size:11px; height:38px">SETEL</button>
-    </div>
-
-    <div id="listRiwayat"></div>
-  </div>
-</div>
-
-
-<div class="modal" id="modalLaporan">
-  <div class="modal-card">
-    <div class="modal-title">📊 Laporan <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
-    <div id="kontenLaporan"></div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px">
-      <button class="btn-submit" style="background:#f1f5f9; color:var(--text); box-shadow:none" onclick="exportPDF('download')">📥 Download PDF</button>
-      <button class="btn-submit" onclick="exportPDF('share')">📤 Share PDF</button>
-    </div>
-  </div>
-</div>
+<!-- MODAL RIWAYAT & LAPORAN DIHAPUS KARENA SUDAH JADI HALAMAN -->
 
 <div class="modal" id="modalRincianBank">
   <div class="modal-card">
@@ -760,19 +781,33 @@
   window.toggleScale = () => { document.body.style.maxWidth = document.body.style.maxWidth === '600px' ? '100%' : '600px'; document.body.style.margin = '0 auto'; };
 
   function renderRiwayat() {
-    const fk = document.getElementById('filterKat').value;
-    const ft = document.getElementById('filterTgl').value;
+    const fk = document.getElementById('filterKat')?.value || "";
+    const ft = document.getElementById('filterTgl')?.value || "";
     
-    let filtered = data.history;
+    let filtered = data.history || [];
     if(fk) filtered = filtered.filter(h => h.kat === fk);
-    if(ft) filtered = filtered.filter(h => h.tgl.startsWith(ft));
+    if(ft) filtered = filtered.filter(h => h.tgl && h.tgl.startsWith(ft));
 
-    document.getElementById('listRiwayat').innerHTML = filtered.map(h => `
-      <div class="history-item">
-        <div class="history-info"><div>${h.ket}</div><div>${new Date(h.tgl).toLocaleString('id-ID')}</div></div>
-        <div class="history-amt amt-plus">+${formatRp(h.amt)}</div>
-      </div>
-    `).join('');
+    const listEl = document.getElementById('listRiwayat');
+    if (!listEl) return;
+
+    listEl.innerHTML = filtered.map(h => {
+      // Tentukan apakah transaksi masuk (+) atau keluar (-)
+      // Kasbon, Tarik Tunai, dan Bank In (Tarik Tunai ke Bank) biasanya dianggap pengeluaran kas tunai
+      const isMinus = h.kat === 'KASBON' || h.kat === 'Tarik Tunai' || (data.profile.categories.find(c => c.name === h.kat)?.role === 'bank_in');
+      const amtClass = isMinus ? 'amt-minus' : 'amt-plus';
+      const amtSign = isMinus ? '-' : '+';
+      
+      return `
+        <div class="history-item">
+          <div class="history-info">
+            <div style="font-size:13px">${h.ket || h.kat}</div>
+            <div style="font-size:10px; color:var(--text-muted)">${h.tgl ? new Date(h.tgl).toLocaleString('id-ID') : '-'}</div>
+          </div>
+          <div class="history-amt ${amtClass}" style="font-size:14px">${amtSign}${formatRp(h.amt)}</div>
+        </div>
+      `;
+    }).join('') || '<p style="text-align:center; padding:20px; color:var(--text-muted)">Data tidak ditemukan</p>';
   }
 
 
@@ -802,7 +837,29 @@
 
 
 
-  window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
+  window.bukaHalaman = (id) => {
+    // Sembunyikan semua view & modal
+    document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
+    document.getElementById('view-beranda').style.display = (id === 'view-beranda') ? 'block' : 'none';
+    
+    // Tampilkan halaman target
+    if(id !== 'view-beranda') {
+      document.getElementById(id).style.display = 'block';
+    }
+    
+    // Update Bottom Nav Active State
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.onclick && item.onclick.toString().includes(id)) {
+        item.classList.add('active');
+      }
+    });
+    
+    tutupSemuaModal();
+  };
+
+  window.bukaRiwayat = () => { renderRiwayat(); bukaHalaman('view-riwayat'); };
+  window.bukaLaporan = () => { renderLaporan(); bukaHalaman('view-laporan'); };
 
   window.bukaRincianBank = () => {
     // Memfilter riwayat yang merupakan DEPOSIT ke 'bank' atau transaksi yang menambah saldo bank (Bank In)
@@ -887,8 +944,9 @@
         `).join('')}
       </div>
     `;
-    bukaModal('modalLaporan');
   };
+
+  function renderLaporan() { window.bukaLaporan(); }
 
 
 
