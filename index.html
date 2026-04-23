@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="apple-touch-icon" href="logo-180.png">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
@@ -182,11 +182,11 @@
 
   <div class="container">
     <div class="balance-card card-blue">
-      <div class="card-label">Saldo Bank <span class="rincian-btn" onclick="bukaRiwayat()">Rincian</span></div>
+      <div class="card-label">Saldo Bank <span class="rincian-btn" onclick="bukaRincianBank()">Rincian</span></div>
       <div id="saldoBankDisplay" class="card-value">Rp 0</div>
     </div>
     <div class="balance-card card-green">
-      <div class="card-label">Saldo Kas Tunai <span class="rincian-btn" onclick="bukaRiwayat()">Rincian</span></div>
+      <div class="card-label">Saldo Kas Tunai <span class="rincian-btn" onclick="bukaRincianKas()">Rincian</span></div>
       <div id="saldoKasTunaiDisplay" class="card-value">Rp 0</div>
     </div>
 
@@ -360,6 +360,20 @@
   </div>
 </div>
 
+<div class="modal" id="modalRincianBank">
+  <div class="modal-card">
+    <div class="modal-title">🏦 Riwayat Deposit <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="listRincianBank"></div>
+  </div>
+</div>
+
+<div class="modal" id="modalRincianKas">
+  <div class="modal-card">
+    <div class="modal-title">💵 Rincian Kas Tunai <span class="close-modal" onclick="tutupSemuaModal()">×</span></div>
+    <div id="kontenRincianKas"></div>
+  </div>
+</div>
+
 <script type="module">
   import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
   import { updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -508,8 +522,14 @@
   function getInt(id) { return parseInt(document.getElementById(id).value.replace(/\./g, "")) || 0; }
 
   window.updateUI = () => {
+    let totalPenjualan = 0;
+    data.history.forEach(h => {
+      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
+    });
+    const totalKasDisplay = totalPenjualan + data.admin + data.acc - data.tarik;
+
     document.getElementById('saldoBankDisplay').innerText = formatRp(data.bank);
-    document.getElementById('saldoKasTunaiDisplay').innerText = formatRp(data.kas);
+    document.getElementById('saldoKasTunaiDisplay').innerText = formatRp(totalKasDisplay);
     document.getElementById('labaAdminDisplay').innerText = formatRp(data.admin);
     document.getElementById('labaAksesorisDisplay').innerText = formatRp(data.acc);
     document.getElementById('tarikTunaiDisplay').innerText = formatRp(data.tarik);
@@ -755,6 +775,43 @@
 
 
   window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
+
+  window.bukaRincianBank = () => {
+    const filtered = data.history.filter(h => h.kat === 'DEPOSIT');
+    document.getElementById('listRincianBank').innerHTML = filtered.length ? filtered.map(h => `
+      <div class="history-item">
+        <div class="history-info"><div>${h.ket}</div><div>${new Date(h.tgl).toLocaleString('id-ID')}</div></div>
+        <div class="history-amt amt-plus">+${formatRp(h.amt)}</div>
+      </div>
+    `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted)">Belum ada riwayat deposit</p>';
+    bukaModal('modalRincianBank');
+  };
+
+  window.bukaRincianKas = () => {
+    let totalPenjualan = 0;
+    data.history.forEach(h => {
+      // Menghitung total penjualan dari kategori selain DEPOSIT, KASBON, dan TARIK TUNAI
+      // Karena TARIK TUNAI dikurangi secara terpisah sesuai rumus user
+      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
+    });
+
+    const totalKas = totalPenjualan + data.admin + data.acc - data.tarik;
+
+    document.getElementById('kontenRincianKas').innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <div class="history-item"><span>Saldo Penjualan</span> <b>${formatRp(totalPenjualan)}</b></div>
+        <div class="history-item"><span>Laba Admin</span> <b style="color:var(--success)">+${formatRp(data.admin)}</b></div>
+        <div class="history-item"><span>Laba Aksesoris</span> <b style="color:var(--success)">+${formatRp(data.acc)}</b></div>
+        <div class="history-item"><span>Tarik Tunai</span> <b style="color:var(--danger)">-${formatRp(data.tarik)}</b></div>
+        <div style="border-top:2px solid var(--border); margin-top:10px; padding-top:10px; display:flex; justify-content:space-between; align-items:center">
+          <span style="font-weight:800">TOTAL KAS TUNAI</span>
+          <b style="font-size:18px; color:var(--accent)">${formatRp(totalKas)}</b>
+        </div>
+      </div>
+    `;
+    bukaModal('modalRincianKas');
+  };
+
   window.bukaLaporan = () => {
     const stats = {};
     let totalPenjualan = 0;
@@ -762,7 +819,7 @@
       if(!stats[h.kat]) stats[h.kat] = { count: 0, total: 0 };
       stats[h.kat].count++;
       stats[h.kat].total += h.amt;
-      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON') totalPenjualan += h.amt;
+      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
     });
 
     let catListHtml = Object.keys(stats).map(k => `
@@ -771,7 +828,7 @@
       </div>
     `).join('');
 
-    const kasAkhir = (totalPenjualan - data.tarik) + data.admin + data.acc;
+    const kasAkhir = totalPenjualan + data.admin + data.acc - data.tarik;
 
     document.getElementById('kontenLaporan').innerHTML = `
       <div style="background:var(--accent-light); padding:15px; border-radius:20px; margin-bottom:15px">
