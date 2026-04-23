@@ -805,13 +805,18 @@
   window.bukaRiwayat = () => { renderRiwayat(); bukaModal('modalRiwayat'); };
 
   window.bukaRincianBank = () => {
-    const filtered = data.history.filter(h => h.kat === 'DEPOSIT');
+    // Memfilter riwayat yang merupakan DEPOSIT ke 'bank' atau transaksi yang menambah saldo bank (Bank In)
+    const filtered = data.history.filter(h => 
+      (h.kat === 'DEPOSIT' && h.ket.toLowerCase().includes('bank')) || 
+      (data.profile.categories.find(c => c.name === h.kat)?.role === 'bank_in')
+    );
+    
     document.getElementById('listRincianBank').innerHTML = filtered.length ? filtered.map(h => `
       <div class="history-item">
         <div class="history-info"><div>${h.ket}</div><div>${new Date(h.tgl).toLocaleString('id-ID')}</div></div>
         <div class="history-amt amt-plus">+${formatRp(h.amt)}</div>
       </div>
-    `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted)">Belum ada riwayat deposit</p>';
+    `).join('') : '<p style="text-align:center; padding:20px; color:var(--text-muted)">Belum ada riwayat penambahan saldo bank</p>';
     bukaModal('modalRincianBank');
   };
 
@@ -826,19 +831,19 @@
       
       <div style="display:flex; flex-direction:column; gap:12px">
         <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
-          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Sales (Transfer)</span>
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Jumlah Penjualan (Digital)</span>
           <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.sales)}</span>
         </div>
         <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
-          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Laba Admin</span>
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Laba Admin</span>
           <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.admin)}</span>
         </div>
         <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
-          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Penjualan Acc</span>
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Laba Acc (Aksesoris)</span>
           <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.acc)}</span>
         </div>
         <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
-          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Tarik Tunai (Out)</span>
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Tarik Tunai</span>
           <span style="font-weight:700; color:var(--danger)">- ${formatRp(data.tarik)}</span>
         </div>
         <div style="margin-top:10px; padding:10px; font-size:10px; color:var(--text-muted); text-align:center; font-style:italic">
