@@ -378,6 +378,8 @@
   import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
   import { updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+
   // URL Cleanup / Routing
   if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
     window.history.replaceState({}, '', '/beranda');
@@ -386,12 +388,35 @@
   let currentUser = null;
   const getUKey = (email) => "KINK_" + email.replace(/[^a-zA-Z0-9]/g, "_");
 
-  let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, history:[], kasbon:[], kontak:[], profile:{} };
+  let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, sales:0, history:[], kasbon:[], kontak:[], profile:{ categories:[] } };
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     document.getElementById('authContainer').style.display = user ? 'none' : 'flex';
     document.getElementById('appContainer').style.display = user ? 'block' : 'none';
-    if(user) { currentUser = user; initData(); }
+    if(user) { 
+      currentUser = user; 
+      
+      // Setup data awal jika user baru (Google / Email Login)
+      try {
+        const profileRef = doc(db, user.uid + "_profile", "data");
+        const profileSnap = await getDoc(profileRef);
+        if (!profileSnap.exists()) {
+          await setDoc(profileRef, { 
+            email: user.email, phone: '-', toko: "KINK", defaultCategory: "Seabank",
+            categories: [
+              { name: "Seabank", role: "bank_out" },
+              { name: "Dana", role: "bank_out" },
+              { name: "Orderkuota", role: "bank_out" },
+              { name: "Tarik Tunai", role: "bank_in" },
+              { name: "Aksesoris", role: "cash_in" }
+            ]
+          });
+          await setDoc(doc(db, user.uid + "_balances", "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, sales:0 });
+        }
+      } catch (e) { console.error("Error init user:", e); }
+
+      initData(); 
+    }
   });
 
 
@@ -421,22 +446,18 @@
 
   window.handleGoogleLogin = async () => {
     try {
-      const res = await signInWithPopup(auth, googleProvider);
-      const user = res.user;
-      const profileRef = doc(db, user.uid + "_profile", "data");
-      const profileSnap = await getDoc(profileRef);
-      
-      if (!profileSnap.exists()) {
-        await setDoc(profileRef, { 
-          email: user.email, 
-          phone: user.phoneNumber || '-', 
-          toko: "KINK", 
-          defaultCategory: "Seabank",
-          categories: ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"]
-        });
-        await setDoc(doc(db, user.uid + "_balances", "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
+      // Mencoba login via Popup
+      await signInWithPopup(auth, googleProvider);
+    } catch(err) {
+      console.error("Auth Error:", err);
+      if (err.code === 'auth/operation-not-allowed') {
+        alert("ERROR: Google Provider belum diaktifkan di Firebase Console. \n\nSilakan ke: Firebase Console > Auth > Sign-in Method > Aktifkan Google.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        alert("ERROR: Domain ini belum diizinkan. \n\nTambahkan '" + window.location.hostname + "' di Firebase Console > Auth > Settings > Authorized Domains.");
+      } else {
+        alert("Gagal Login Google: " + err.message);
       }
-    } catch(err) { alert("Gagal Login Google: " + err.message); }
+    }
   };
 
 
@@ -451,7 +472,7 @@
     onSnapshot(doc(db, uid + "_profile", "data"), (snap) => {
       if(snap.exists()) {
         data.profile = snap.data();
-        if(!data.profile.categories) {
+        if(!data.profile.categories || (data.profile.categories.length > 0 && typeof data.profile.categories[0] === 'string')) {
           // Migration to new structure if old structure exists
           data.profile.categories = [
             { name: "Seabank", role: "bank_out" },
@@ -493,6 +514,15 @@
         const b = snap.data();
         data.bank = b.bank || 0; data.kas = b.kas || 0; data.admin = b.admin || 0;
         data.acc = b.acc || 0; data.tarik = b.tarik || 0; data.depo = b.depo || 0;
+        data.sales = b.sales || 0;
+        
+        // Initial migration for sales field
+        if(b.sales === undefined) {
+          data.sales = data.kas - data.acc + data.tarik;
+          if(data.sales < 0) data.sales = 0;
+          syncBalances();
+        }
+        
         updateUI();
       }
     });
@@ -522,11 +552,8 @@
   function getInt(id) { return parseInt(document.getElementById(id).value.replace(/\./g, "")) || 0; }
 
   window.updateUI = () => {
-    let totalPenjualan = 0;
-    data.history.forEach(h => {
-      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
-    });
-    const totalKasDisplay = totalPenjualan + data.admin + data.acc - data.tarik;
+    // Rumus Kas Tunai: Sales + Admin + Acc - Withdrawals
+    const totalKasDisplay = data.sales + data.admin + data.acc - data.tarik;
 
     document.getElementById('saldoBankDisplay').innerText = formatRp(data.bank);
     document.getElementById('saldoKasTunaiDisplay').innerText = formatRp(totalKasDisplay);
@@ -550,10 +577,11 @@
 
 
 
-      const selectedCat = data.profile.categories.find(c => c.name === kat);
+      const categories = data.profile && data.profile.categories ? data.profile.categories : [];
+      const selectedCat = categories.find(c => c.name === kat);
       const role = selectedCat ? selectedCat.role : 'none';
 
-      if(role === "bank_out") { data.kas += nom; data.bank -= nom; data.admin += fee; }
+      if(role === "bank_out") { data.kas += nom; data.bank -= nom; data.admin += fee; data.sales += nom; }
       else if(role === "cash_in") { data.kas += nom; data.acc += nom; }
       else if(role === "bank_in") { data.kas -= nom; data.bank += nom; data.admin += fee; data.tarik += nom; }
 
@@ -575,7 +603,7 @@
 
   async function syncBalances() {
     await setDoc(doc(db, currentUser.uid + "_balances", "data"), {
-      bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo
+      bank:data.bank, kas:data.kas, admin:data.admin, acc:data.acc, tarik:data.tarik, depo:data.depo, sales:data.sales
     });
   }
 
@@ -788,24 +816,33 @@
   };
 
   window.bukaRincianKas = () => {
-    let totalPenjualan = 0;
-    data.history.forEach(h => {
-      // Menghitung total penjualan dari kategori selain DEPOSIT, KASBON, dan TARIK TUNAI
-      // Karena TARIK TUNAI dikurangi secara terpisah sesuai rumus user
-      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
-    });
-
-    const totalKas = totalPenjualan + data.admin + data.acc - data.tarik;
+    const totalKas = data.sales + data.admin + data.acc - data.tarik;
 
     document.getElementById('kontenRincianKas').innerHTML = `
+      <div style="background:var(--accent-light); padding:20px; border-radius:24px; margin-bottom:20px; text-align:center; border:1px dashed var(--accent)">
+        <div style="font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px">Saldo Kas Tunai Saat Ini</div>
+        <div style="font-size:28px; font-weight:800; color:var(--accent)">${formatRp(totalKas)}</div>
+      </div>
+      
       <div style="display:flex; flex-direction:column; gap:12px">
-        <div class="history-item"><span>Saldo Penjualan</span> <b>${formatRp(totalPenjualan)}</b></div>
-        <div class="history-item"><span>Laba Admin</span> <b style="color:var(--success)">+${formatRp(data.admin)}</b></div>
-        <div class="history-item"><span>Laba Aksesoris</span> <b style="color:var(--success)">+${formatRp(data.acc)}</b></div>
-        <div class="history-item"><span>Tarik Tunai</span> <b style="color:var(--danger)">-${formatRp(data.tarik)}</b></div>
-        <div style="border-top:2px solid var(--border); margin-top:10px; padding-top:10px; display:flex; justify-content:space-between; align-items:center">
-          <span style="font-weight:800">TOTAL KAS TUNAI</span>
-          <b style="font-size:18px; color:var(--accent)">${formatRp(totalKas)}</b>
+        <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Sales (Transfer)</span>
+          <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.sales)}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Laba Admin</span>
+          <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.admin)}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Penjualan Acc</span>
+          <span style="font-weight:700; color:var(--success)">+ ${formatRp(data.acc)}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:12px; background:var(--bg); border-radius:14px">
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted)">Total Tarik Tunai (Out)</span>
+          <span style="font-weight:700; color:var(--danger)">- ${formatRp(data.tarik)}</span>
+        </div>
+        <div style="margin-top:10px; padding:10px; font-size:10px; color:var(--text-muted); text-align:center; font-style:italic">
+          * Rumus: Sales + Admin + Acc - Tarik Tunai
         </div>
       </div>
     `;
@@ -814,33 +851,35 @@
 
   window.bukaLaporan = () => {
     const stats = {};
-    let totalPenjualan = 0;
     data.history.forEach(h => {
       if(!stats[h.kat]) stats[h.kat] = { count: 0, total: 0 };
       stats[h.kat].count++;
       stats[h.kat].total += h.amt;
-      if(h.kat !== 'DEPOSIT' && h.kat !== 'KASBON' && h.kat !== 'Tarik Tunai') totalPenjualan += h.amt;
     });
 
-    let catListHtml = Object.keys(stats).map(k => `
-      <div class="history-item" style="font-size:12px">
-        <span>${k} (${stats[k].count}x)</span> <b>${formatRp(stats[k].total)}</b>
-      </div>
-    `).join('');
-
-    const kasAkhir = totalPenjualan + data.admin + data.acc - data.tarik;
+    const kasAkhir = data.sales + data.admin + data.acc - data.tarik;
 
     document.getElementById('kontenLaporan').innerHTML = `
-      <div style="background:var(--accent-light); padding:15px; border-radius:20px; margin-bottom:15px">
-        <div style="font-size:11px; font-weight:700; color:var(--accent)">TOTAL KAS AKHIR</div>
-        <div style="font-size:24px; font-weight:800">${formatRp(kasAkhir)}</div>
+      <div style="background:var(--accent-light); padding:15px; border-radius:20px; margin-bottom:15px; text-align:center">
+        <div style="font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase">Total Kas Tunai (All-Time)</div>
+        <div style="font-size:24px; font-weight:800; color:var(--accent)">${formatRp(kasAkhir)}</div>
       </div>
-      <div style="margin-bottom:15px">${catListHtml}</div>
-      <div style="border-top:1px dashed var(--border); padding-top:10px">
-        <div class="history-item" style="font-size:12px"><span>Total Penjualan</span> <b>${formatRp(totalPenjualan)}</b></div>
-        <div class="history-item" style="font-size:12px"><span>Tarik Tunai (-)</span> <b>${formatRp(data.tarik)}</b></div>
-        <div class="history-item" style="font-size:12px"><span>Laba Admin (+)</span> <b>${formatRp(data.admin)}</b></div>
-        <div class="history-item" style="font-size:12px"><span>Laba Acc (+)</span> <b>${formatRp(data.acc)}</b></div>
+      
+      <div style="margin-top:20px; border-top:1.5px solid var(--border); padding-top:15px">
+        <div style="font-size:12px; font-weight:800; margin-bottom:10px">RINGKASAN AKUMULASI</div>
+        <div class="history-item"><span>Total Sales (Bank)</span> <b>${formatRp(data.sales)}</b></div>
+        <div class="history-item"><span>Total Laba Admin</span> <b style="color:var(--success)">+${formatRp(data.admin)}</b></div>
+        <div class="history-item"><span>Total Laba Acc</span> <b style="color:var(--success)">+${formatRp(data.acc)}</b></div>
+        <div class="history-item"><span>Total Tarik Tunai</span> <b style="color:var(--danger)">-${formatRp(data.tarik)}</b></div>
+      </div>
+
+      <div style="margin-top:20px; border-top:1.5px solid var(--border); padding-top:15px">
+        <div style="font-size:12px; font-weight:800; margin-bottom:10px">AKTIVITAS (100 TERAKHIR)</div>
+        ${Object.keys(stats).map(k => `
+          <div class="history-item" style="font-size:12px">
+            <span>${k} (${stats[k].count}x)</span> <b>${formatRp(stats[k].total)}</b>
+          </div>
+        `).join('')}
       </div>
     `;
     bukaModal('modalLaporan');
