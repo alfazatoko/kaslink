@@ -2,9 +2,9 @@
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDrHGuUG9vVqCPSsy8cOUEBhvG32qJqyWA",
-  authDomain: "kasirkink.firebaseapp.com",
-  projectId: "kasirkink",
-  storageBucket: "kasirkink.firebasestorage.app",
+  authDomain: "kaslink-pro.firebaseapp.com",
+  projectId: "kaslink-pro",
+  storageBucket: "kaslink-pro.firebasestorage.app",
   messagingSenderId: "253740725358",
   appId: "1:253740725358:web:05a13e4f77734ccdc4a27f",
   measurementId: "G-10VXP6CNVL"
