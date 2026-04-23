@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>KASLINK • POS System</title>
+  <title>KINK • POS System</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -88,6 +88,14 @@
     .form-control:focus { border-color: var(--accent); }
     .btn-submit { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--accent); color: white; font-weight: 800; font-size: 15px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
     
+    .btn-google { width: 100%; padding: 14px; border-radius: 16px; border: 1.5px solid var(--border); background: white; color: var(--text); font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; transition: 0.2s; }
+    .btn-google:hover { background: #f8fafc; border-color: var(--accent); }
+    .btn-google img { width: 20px; }
+    .divider { display: flex; align-items: center; text-align: center; margin: 20px 0; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+    .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
+    .divider:not(:empty)::before { margin-right: .5em; }
+    .divider:not(:empty)::after { margin-left: .5em; }
+    
     /* MISC */
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
     .history-info div:first-child { font-weight: 700; }
@@ -102,14 +110,14 @@
 <div id="authContainer">
   <div class="login-card">
     <div style="text-align:center; margin-bottom:30px">
-      <h1 style="font-size:32px; font-weight:900; color:var(--accent); letter-spacing:-1px">KASLINK</h1>
+      <h1 style="font-size:32px; font-weight:900; color:var(--accent); letter-spacing:-1px">KINK</h1>
       <p style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:1px">Pembukuan Kasir Agen Brilink</p>
     </div>
 
     <div id="loginPanel">
       <div class="modal-title">🔐 Masuk Akun</div>
       <form onsubmit="handleLogin(event)">
-        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" placeholder="owner@kaslink.id" required></div>
+        <div class="form-group"><label>Email</label><input type="email" id="loginEmail" class="form-control" placeholder="owner@kink.id" required></div>
         <div class="form-group"><label>Password</label>
           <div class="password-wrapper" style="position:relative">
             <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
@@ -118,6 +126,11 @@
         </div>
         <button type="submit" class="btn-submit">MASUK KE KASIR</button>
       </form>
+      <div class="divider">ATAU</div>
+      <button class="btn-google" onclick="handleGoogleLogin()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        Daftar / Masuk via Google
+      </button>
       <p style="text-align:center; margin-top:20px; font-size:13px">Belum ada akun? <a href="#" onclick="toggleAuth(true)" style="color:var(--accent); font-weight:800">Daftar</a></p>
     </div>
     <div id="registerPanel" class="hidden">
@@ -133,6 +146,11 @@
         </div>
         <button type="submit" class="btn-submit">BUAT AKUN</button>
       </form>
+      <div class="divider">ATAU</div>
+      <button class="btn-google" onclick="handleGoogleLogin()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        Daftar via Google Akun
+      </button>
       <p style="text-align:center; margin-top:20px; font-size:13px">Sudah punya akun? <a href="#" onclick="toggleAuth(false)" style="color:var(--accent); font-weight:800">Login</a></p>
     </div>
 
@@ -145,7 +163,7 @@
     <div class="brand-box">
       <img id="headerLogo" src="logo.png" class="logo-img" onclick="bukaModal('modalAkun')">
       <div class="brand-text">
-        <h3>KASLINK</h3>
+        <h3>KINK</h3>
         <p>Pembukuan Kasir Agen Brilink</p>
         <div id="fullDate" style="font-size:10px; font-weight:700; color:var(--accent); margin-top:2px">Hari, 00 Bln 0000</div>
       </div>
@@ -302,6 +320,7 @@
     <div id="listKontak" style="max-height:200px; overflow-y:auto; margin-bottom:15px"></div>
     <div class="form-group"><label>Nama / Ket</label><input type="text" id="kontakNama" class="form-control"></div>
     <div class="form-group"><label>No HP / Rekening</label><input type="text" id="kontakWA" class="form-control"></div>
+    <div class="form-group"><label>Catatan</label><textarea id="kontakCatatan" class="form-control" rows="2"></textarea></div>
     <div class="form-group">
       <label>Ambil Foto (Kamera Live)</label>
       <input type="file" id="kontakPhoto" class="form-control" accept="image/*" capture="environment">
@@ -337,7 +356,7 @@
 </div>
 
 <script type="module">
-  import { auth, db, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
+  import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, orderBy, limit, deleteDoc } from './firebase-config.js';
   import { updatePassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   // URL Cleanup / Routing
@@ -346,7 +365,7 @@
   }
 
   let currentUser = null;
-  const getUKey = (email) => "KASLINK_" + email.replace(/[^a-zA-Z0-9]/g, "_");
+  const getUKey = (email) => "KINK_" + email.replace(/[^a-zA-Z0-9]/g, "_");
 
   let data = { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0, history:[], kasbon:[], kontak:[], profile:{} };
 
@@ -374,11 +393,31 @@
     try {
       const res = await createUserWithEmailAndPassword(auth, email, document.getElementById('regPassword').value);
       const uid = res.user.uid;
-      await setDoc(doc(db, uid + "_profile", "data"), { email, phone: document.getElementById('regPhone').value, toko: "KASLINK", defaultCategory: "Seabank" });
+      await setDoc(doc(db, uid + "_profile", "data"), { email, phone: document.getElementById('regPhone').value, toko: "KINK", defaultCategory: "Seabank" });
       await setDoc(doc(db, uid + "_balances", "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
       alert("Akun berhasil dibuat!");
 
     } catch(err) { alert("Gagal: " + err.message); }
+  };
+
+  window.handleGoogleLogin = async () => {
+    try {
+      const res = await signInWithPopup(auth, googleProvider);
+      const user = res.user;
+      const profileRef = doc(db, user.uid + "_profile", "data");
+      const profileSnap = await getDoc(profileRef);
+      
+      if (!profileSnap.exists()) {
+        await setDoc(profileRef, { 
+          email: user.email, 
+          phone: user.phoneNumber || '-', 
+          toko: "KINK", 
+          defaultCategory: "Seabank",
+          categories: ["Seabank", "Dana", "Orderkuota", "Tarik Tunai", "Aksesoris"]
+        });
+        await setDoc(doc(db, user.uid + "_balances", "data"), { bank:0, kas:0, admin:0, acc:0, tarik:0, depo:0 });
+      }
+    } catch(err) { alert("Gagal Login Google: " + err.message); }
   };
 
 
@@ -530,18 +569,20 @@
   window.tambahKontak = async () => {
     if(!currentUser) return;
     try {
-
-
-
       const nama = document.getElementById('kontakNama').value;
       const wa = document.getElementById('kontakWA').value;
-      if(!nama || !wa) return alert("Nama & Nomor harus diisi");
-      await addDoc(collection(db, currentUser.uid + "_kontak"), { nama, wa, createdAt: new Date().toISOString() });
-      document.getElementById('kontakNama').value = ''; document.getElementById('kontakWA').value = '';
-      alert("Kontak Tersimpan!");
-
-
-
+      const catatan = document.getElementById('kontakCatatan').value;
+      if(!nama) return alert("Nama harus diisi");
+      await addDoc(collection(db, currentUser.uid + "_kontak"), { 
+        nama, 
+        wa: wa || '-', 
+        catatan: catatan || '-',
+        createdAt: new Date().toISOString() 
+      });
+      document.getElementById('kontakNama').value = ''; 
+      document.getElementById('kontakWA').value = '';
+      document.getElementById('kontakCatatan').value = '';
+      alert("Kontak & Catatan Tersimpan!");
     } catch(err) { alert("Gagal: " + err.message); }
   };
 
@@ -653,12 +694,15 @@
 
   function renderKontak() {
     document.getElementById('listKontak').innerHTML = data.kontak.map(k => `
-      <div class="history-item">
-        <div class="history-info"><div>${k.nama}</div><div>${k.wa}</div></div>
-        <div style="display:flex; gap:5px">
-          <button onclick="navigator.clipboard.writeText('${k.wa}'); alert('Salin: ${k.wa}')" style="background:var(--accent); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">COPY</button>
-          <button onclick="hapusKontak('${k.id}')" style="background:var(--danger); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">HAPUS</button>
+      <div class="history-item" style="flex-direction:column; align-items:flex-start; gap:5px">
+        <div style="display:flex; justify-content:space-between; width:100%; align-items:center">
+          <div class="history-info"><div>${k.nama}</div><div style="font-size:10px">${k.wa || '-'}</div></div>
+          <div style="display:flex; gap:5px">
+            <button onclick="navigator.clipboard.writeText('${k.wa}'); alert('Salin: ${k.wa}')" style="background:var(--accent); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">COPY</button>
+            <button onclick="hapusKontak('${k.id}')" style="background:var(--danger); color:white; border:none; padding:4px 8px; border-radius:6px; font-size:10px">HAPUS</button>
+          </div>
         </div>
+        ${k.catatan && k.catatan !== '-' ? `<div style="font-size:11px; background:var(--accent-light); padding:8px; border-radius:10px; width:100%; border-left:4px solid var(--accent)">📝 ${k.catatan}</div>` : ''}
       </div>
     `).join('');
   }

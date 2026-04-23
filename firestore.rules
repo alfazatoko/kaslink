@@ -2,11 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{collectionId}/{document=**} {
-      allow read, write: if request.auth != null && collectionId.startsWith(request.auth.uid + "_");
+      allow read, write: if request.auth != null && (collectionId == request.auth.uid || collectionId.startsWith(request.auth.uid + "_"));
     }
-
-
-
-
   }
 }

@@ -1,7 +1,7 @@
 {
-  "name": "kaslink-pro",
+  "name": "kink-pro",
   "version": "1.0.0",
-  "description": "KASLINK - Kasir Agen Brilink Pro",
+  "description": "KINK - Kasir Agen Brilink Pro",
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
