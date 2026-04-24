@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kink-v1';
+const CACHE_NAME = 'kink-v2';
 const ASSETS = [
   '/',
   '/index.html',

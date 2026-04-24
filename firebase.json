@@ -1,13 +1,10 @@
 {
   "hosting": {
-    "public": ".",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "*.bat",
-      "*.ico",
-      "*.md"
+      "**/node_modules/**"
     ],
     "rewrites": [
       {
@@ -18,9 +15,6 @@
   },
   "firestore": {
     "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }
 
