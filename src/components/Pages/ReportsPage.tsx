@@ -25,7 +25,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ history, profile, onBack }) =
     kasbonTotal: 0,
     depositTotal: 0,
     totalCash: 0,
-    sisaCash: 0
+    sisaCash: 0,
+    finalBalBank: 0,
+    finalBalKas: 0
   });
 
   useEffect(() => {

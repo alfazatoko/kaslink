@@ -313,7 +313,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
           }}
           disabled={saveStatus !== 'idle'}
         >
-          {saveStatus === 'idle' && <><Save size={18} /> UPDATE PROFIL</>}
+          {saveStatus === 'idle' && <><Save size={18} /> SIMPAN PENGATURAN</>}
           {saveStatus === 'saving' && 'MENYIMPAN...'}
           {saveStatus === 'success' && '✅ TERSIMPAN!'}
         </button>
