@@ -76,7 +76,7 @@ const App: React.FC = () => {
     });
 
     // Listen to History
-    const qHistory = query(collection(db, `${uid}_history`), orderBy('tgl', 'desc'), limit(100));
+    const qHistory = query(collection(db, `${uid}_history`), orderBy('tgl', 'desc'), limit(500));
     const unsubHistory = onSnapshot(qHistory, (snap) => {
       setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() } as HistoryItem)));
     });
@@ -123,7 +123,7 @@ const App: React.FC = () => {
           />
         )}
         {activeView === 'riwayat' && <HistoryPage history={history} profile={profile} onBack={() => setActiveView('beranda')} />}
-        {activeView === 'laporan' && <ReportsPage history={history} balances={balances} onBack={() => setActiveView('beranda')} />}
+        {activeView === 'laporan' && <ReportsPage history={history} profile={profile} onBack={() => setActiveView('beranda')} />}
         {activeView === 'akun' && <AccountPage profile={profile} balances={balances} onBack={() => setActiveView('beranda')} />}
       </main>
 

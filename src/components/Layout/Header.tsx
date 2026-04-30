@@ -31,9 +31,20 @@ const Header: React.FC<HeaderProps> = ({ profile }) => {
     document.body.classList.toggle('dark');
   };
 
+  const [viewMode, setViewMode] = useState<'hp' | 'tablet' | 'pc'>('pc');
+
   const toggleScale = () => {
-    document.body.style.maxWidth = document.body.style.maxWidth === '600px' ? '100%' : '600px';
-    document.body.style.margin = '0 auto';
+    let nextMode: 'hp' | 'tablet' | 'pc' = 'hp';
+    if (viewMode === 'hp') nextMode = 'tablet';
+    else if (viewMode === 'tablet') nextMode = 'pc';
+    else nextMode = 'hp';
+
+    setViewMode(nextMode);
+    
+    const root = document.documentElement;
+    if (nextMode === 'hp') root.style.setProperty('--app-width', '450px');
+    else if (nextMode === 'tablet') root.style.setProperty('--app-width', '800px');
+    else root.style.setProperty('--app-width', '100%');
   };
 
   return (
@@ -62,8 +73,8 @@ const Header: React.FC<HeaderProps> = ({ profile }) => {
           <div className="h-btn" onClick={toggleMode} title="Dark Mode">
             <Moon size={16} />
           </div>
-          <div className="h-btn" onClick={toggleScale} title="Toggle Scale">
-            <Monitor size={16} />
+          <div className="h-btn" onClick={toggleScale} title={`Mode: ${viewMode.toUpperCase()}`}>
+            <Monitor size={16} color={viewMode === 'pc' ? 'var(--text)' : 'var(--accent)'} />
           </div>
         </div>
       </div>

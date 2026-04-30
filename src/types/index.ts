@@ -31,6 +31,8 @@ export interface HistoryItem {
   ket: string;
   amt: number;
   fee?: number;
+  balBank?: number; // Saldo Bank saat transaksi ini
+  balKas?: number;  // Saldo Kas saat transaksi ini
 }
 
 export interface Kasbon {

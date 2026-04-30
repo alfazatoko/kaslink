@@ -31,6 +31,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
   const [showConfirm, setShowConfirm] = useState<'saldo' | 'semua' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
 
   useEffect(() => {
     if (profile) {
@@ -71,7 +72,8 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
   };
 
   const handleUpdateProfile = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser || saveStatus !== 'idle') return;
+    setSaveStatus('saving');
     try {
       const uid = auth.currentUser.uid;
       await setDoc(doc(db, `${uid}_profile`, 'data'), {
@@ -93,9 +95,11 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
         }
       }
 
-      alert("Profil & Kategori Berhasil Diperbarui!");
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err: any) {
       alert("Gagal Update: " + err.message);
+      setSaveStatus('idle');
     }
   };
 
@@ -296,8 +300,22 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
           )}
         </div>
 
-        <button className="btn-submit" onClick={handleUpdateProfile} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          <Save size={18} /> UPDATE PROFIL
+        <button 
+          className="btn-submit" 
+          onClick={handleUpdateProfile} 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '8px',
+            background: saveStatus === 'success' ? 'var(--success)' : 'var(--accent)',
+            transition: '0.3s'
+          }}
+          disabled={saveStatus !== 'idle'}
+        >
+          {saveStatus === 'idle' && <><Save size={18} /> UPDATE PROFIL</>}
+          {saveStatus === 'saving' && 'MENYIMPAN...'}
+          {saveStatus === 'success' && '✅ TERSIMPAN!'}
         </button>
         <button 
           className="btn-submit" 

@@ -56,7 +56,9 @@ export const useDataActions = (balances: Balances, profile: UserProfile | null) 
       katId: katId,
       ket: ket || katName, 
       amt: nom, 
-      fee 
+      fee,
+      balBank: newBalances.bank,
+      balKas: newBalances.sales + newBalances.admin + newBalances.acc - newBalances.tarik
     });
 
     await syncBalances(newBalances);
@@ -75,13 +77,16 @@ export const useDataActions = (balances: Balances, profile: UserProfile | null) 
     if (!auth.currentUser) return;
     
     let newBalances = { ...balances };
+    // Saldo kas bertambah dari pelunasan kasbon
     newBalances.kas += nominal;
 
     await addDoc(collection(db, `${auth.currentUser.uid}_history`), { 
       tgl: new Date().toISOString(), 
       kat: 'KASBON', 
       ket: `Pelunasan ${nama}`, 
-      amt: nominal 
+      amt: nominal,
+      balBank: newBalances.bank,
+      balKas: newBalances.sales + newBalances.admin + newBalances.acc - newBalances.tarik + newBalances.kas
     });
     
     await deleteDoc(doc(db, `${auth.currentUser.uid}_kasbon`, id));
@@ -101,7 +106,9 @@ export const useDataActions = (balances: Balances, profile: UserProfile | null) 
       tgl: new Date().toISOString(), 
       kat: 'DEPOSIT', 
       ket: `Topup ${tujuan}`, 
-      amt: nominal 
+      amt: nominal,
+      balBank: newBalances.bank,
+      balKas: newBalances.sales + newBalances.admin + newBalances.acc - newBalances.tarik + newBalances.kas
     });
 
     await syncBalances(newBalances);
