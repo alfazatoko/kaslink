@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ profile }) => {
     <div className="header">
       <div className="brand-box">
         <img 
-          src="/logo.png" 
+          src="/kink_logo.png" 
           className="logo-img" 
           alt="Logo" 
           onClick={() => {}} 

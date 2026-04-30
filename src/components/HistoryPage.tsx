@@ -15,7 +15,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
   const formatRp = (v: number) => 'Rp ' + (v || 0).toLocaleString('id-ID');
 
   const filteredHistory = history.filter(h => {
-    const matchKat = filterKat === '' || h.kat === filterKat;
+    const matchKat = filterKat === '' || h.katId === filterKat || h.kat === filterKat;
     const matchTgl = filterTgl === '' || (h.tgl && h.tgl.startsWith(filterTgl));
     return matchKat && matchTgl;
   });
@@ -41,7 +41,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
           >
             <option value="">Semua Kategori</option>
             {profile?.categories.map(c => (
-              <option key={c.name} value={c.name}>{c.name}</option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
           <input 
@@ -62,8 +62,9 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
         
         <div id="listRiwayat">
           {filteredHistory.map((h, i) => {
-            const role = profile?.categories.find(c => c.name === h.kat)?.role;
-            const isMinus = h.kat === 'KASBON' || h.kat === 'Tarik Tunai' || role === 'bank_in';
+            const cat = profile?.categories.find(c => c.id === h.katId || c.name === h.kat);
+            const logic = cat?.logicType;
+            const isMinus = h.kat === 'KASBON' || logic === 'BANK_IN';
             const amtClass = isMinus ? 'amt-minus' : 'amt-plus';
             const amtSign = isMinus ? '-' : '+';
 

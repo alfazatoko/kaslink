@@ -7,8 +7,10 @@ export interface UserProfile {
 }
 
 export interface Category {
+  id: string;
   name: string;
-  role: 'bank_out' | 'bank_in' | 'cash_in' | 'none';
+  logicType: 'BANK_OUT' | 'BANK_IN' | 'LABA_ACC' | 'LABA_ADMIN' | 'NONE';
+  role?: string; // Keep for backward compatibility if needed, but we'll use logicType
 }
 
 export interface Balances {
@@ -25,6 +27,7 @@ export interface HistoryItem {
   id?: string;
   tgl: string;
   kat: string;
+  katId?: string;
   ket: string;
   amt: number;
   fee?: number;

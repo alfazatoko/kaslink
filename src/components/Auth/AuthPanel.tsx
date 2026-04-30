@@ -68,7 +68,14 @@ const AuthPanel: React.FC = () => {
     <div className="auth-container">
       <div className="login-card">
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 900, color: 'var(--accent)', letterSpacing: '-1px' }}>KINK</h1>
+          <img 
+            src="/kink_logo.png" 
+            style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }} 
+            alt="Logo" 
+          />
+          <h1 style={{ fontSize: '32px', fontWeight: 900, color: 'var(--accent)', letterSpacing: '-1px' }}>
+            KINK <span style={{ fontSize: '12px', opacity: 0.5, fontWeight: 700 }}>v2.0</span>
+          </h1>
           <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px' }}>Pembukuan Kasir Agen Brilink</p>
         </div>
 

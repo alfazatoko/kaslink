@@ -11,19 +11,26 @@ interface TransactionModalProps {
 }
 
 const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, profile, onSave }) => {
-  const [kat, setKat] = useState(profile?.defaultCategory || '');
+  const [katId, setKatId] = useState('');
   const [nom, setNom] = useState('');
   const [fee, setFee] = useState('0');
   const [ket, setKet] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen && profile) {
+      setKatId(profile.defaultCategory || (profile.categories[0]?.id || ''));
+    }
+  }, [isOpen, profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const nominal = getInt(nom);
     const adminFee = getInt(fee);
+    if (!katId) return alert("Pilih kategori");
     if (nominal <= 0) return alert("Nominal harus diisi");
 
     try {
-      await onSave(kat, nominal, adminFee, ket);
+      await onSave(katId, nominal, adminFee, ket);
       alert("Transaksi Berhasil!");
       onClose();
       setNom('');
@@ -41,11 +48,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
           <label>Kategori</label>
           <select 
             className="form-control"
-            value={kat}
-            onChange={(e) => setKat(e.target.value)}
+            value={katId}
+            onChange={(e) => setKatId(e.target.value)}
           >
+            <option value="">-- Pilih Kategori --</option>
             {profile?.categories.map(c => (
-              <option key={c.name} value={c.name}>{c.name}</option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>

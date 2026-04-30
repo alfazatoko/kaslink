@@ -1,14 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Balances, UserProfile, HistoryItem, Kasbon, Kontak } from '../../types';
-import { Wallet, Landmark, Phone } from 'lucide-react';
+import { Wallet, Landmark, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataActions } from '../../hooks/useDataActions';
 import { formatRp } from '../../utils/formatters';
 
 // Modals
-import TransactionModal from '../Modals/TransactionModal';
-import KasbonModal from '../Modals/KasbonModal';
-import DepositModal from '../Modals/DepositModal';
-import KontakModal from '../Modals/KontakModal';
 import Modal from '../Common/Modal';
 
 interface DashboardProps {
@@ -24,6 +20,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ 
   balances, 
   profile, 
+  history,
   kasbon, 
   kontak, 
   modalType, 
@@ -38,8 +35,19 @@ const Dashboard: React.FC<DashboardProps> = ({
     hapusKontak 
   } = useDataActions(balances, profile);
 
+  const [filterDate, setFilterDate] = useState(new Date());
+
   // Rumus Kas Tunai: Sales + Admin + Acc - Withdrawals
   const totalKasDisplay = balances.sales + balances.admin + balances.acc - balances.tarik;
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(filterDate);
+    newDate.setDate(newDate.getDate() + days);
+    setFilterDate(newDate);
+  };
+
+  const dateStr = filterDate.toISOString().split('T')[0];
+  const displayDate = filterDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
     <div id="view-beranda">
@@ -85,70 +93,147 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="laba-value">{formatRp(balances.tarik)}</div>
         </div>
         <div className="laba-card">
-          <div className="laba-label">📈 TOTAL DEPOSIT</div>
-          <div className="laba-value">{formatRp(balances.depo)}</div>
+          <div className="laba-label">📈 DEPOSIT HARI INI</div>
+          <div className="laba-value">
+            {formatRp(history
+              .filter(h => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                return h.kat === 'DEPOSIT' && h.tgl.startsWith(todayStr);
+              })
+              .reduce((acc, curr) => acc + curr.amt, 0)
+            )}
+          </div>
         </div>
       </div>
 
-      <TransactionModal 
-        isOpen={modalType === 'transaksi'} 
-        onClose={() => setModalType(null)} 
-        profile={profile}
-        onSave={simpanTransaksi}
-      />
-
-      <KasbonModal 
-        isOpen={modalType === 'kasbon'} 
-        onClose={() => setModalType(null)} 
-        kasbonList={kasbon}
-        onAdd={tambahKasbon}
-        onPay={bayarKasbon}
-      />
-
-      <DepositModal 
-        isOpen={modalType === 'deposit'} 
-        onClose={() => setModalType(null)} 
-        onSave={simpanDeposit}
-      />
-
-      <KontakModal 
-        isOpen={modalType === 'kontak'} 
-        onClose={() => setModalType(null)} 
-        kontakList={kontak}
-        onAdd={tambahKontak}
-        onDelete={hapusKontak}
-      />
-
       {/* Rincian Modals */}
       <Modal isOpen={modalType === 'rincian_bank'} onClose={() => setModalType(null)} title="🏦 Riwayat Deposit">
-        <div style={{ padding: '10px' }}>
-          <p>Total Deposit: {formatRp(balances.depo)}</p>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px' }}>Fitur rincian mendalam sedang dikembangkan.</p>
+        <div style={{ padding: '5px' }}>
+          {/* Date Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px', background: 'var(--bg)', padding: '10px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <button onClick={() => changeDate(-1)} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ChevronLeft size={18} />
+            </button>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+              {displayDate}
+            </div>
+            <button onClick={() => changeDate(1)} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '15px' }}>
+            {(() => {
+              const selectedDeposits = history.filter(h => 
+                h.kat === 'DEPOSIT' && 
+                h.ket === 'Topup bank' && 
+                h.tgl.startsWith(dateStr)
+              );
+
+              if (selectedDeposits.length > 0) {
+                return selectedDeposits.map((h, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Deposit Bank</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {new Date(h.tgl).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div style={{ color: 'var(--success)', fontWeight: 700 }}>+{formatRp(h.amt)}</div>
+                  </div>
+                ));
+              } else {
+                return <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '12px' }}>Tidak ada riwayat untuk tanggal ini.</div>;
+              }
+            })()}
+          </div>
+          
+          <div style={{ background: 'var(--bg-card)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>Total Deposit:</span>
+            <strong style={{ color: 'var(--accent)', fontSize: '16px' }}>
+              {formatRp(history
+                .filter(h => h.kat === 'DEPOSIT' && h.ket === 'Topup bank' && h.tgl.startsWith(dateStr))
+                .reduce((acc, curr) => acc + curr.amt, 0)
+              )}
+            </strong>
+          </div>
         </div>
       </Modal>
 
       <Modal isOpen={modalType === 'rincian_kas'} onClose={() => setModalType(null)} title="💵 Rincian Kas Tunai">
-        <div style={{ padding: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Penjualan (Sales):</span>
-            <strong>{formatRp(balances.sales)}</strong>
+        <div style={{ padding: '5px' }}>
+          {/* Date Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px', background: 'var(--bg)', padding: '10px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <button onClick={() => changeDate(-1)} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ChevronLeft size={18} />
+            </button>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+              {displayDate}
+            </div>
+            <button onClick={() => changeDate(1)} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ChevronRight size={18} />
+            </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Laba Admin:</span>
-            <strong>{formatRp(balances.admin)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Laba Acc:</span>
-            <strong>{formatRp(balances.acc)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-            <span>Tarik Tunai:</span>
-            <strong style={{ color: 'var(--danger)' }}>-{formatRp(balances.tarik)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '16px', fontWeight: 800 }}>
-            <span>Total Kas:</span>
-            <strong style={{ color: 'var(--success)' }}>{formatRp(totalKasDisplay)}</strong>
-          </div>
+
+          {(() => {
+            // Calculate daily values from history
+            const dayHistory = history.filter(h => h.tgl.startsWith(dateStr));
+            
+            let dailySales = 0;
+            let dailyAdmin = 0;
+            let dailyAcc = 0;
+            let dailyTarik = 0;
+
+            dayHistory.forEach(h => {
+              const cat = profile?.categories.find(c => c.id === h.katId || c.name === h.kat);
+              const logic = cat?.logicType;
+
+              if (logic === 'BANK_OUT') {
+                dailySales += (h.amt || 0);
+                dailyAdmin += (h.fee || 0);
+              } else if (logic === 'BANK_IN') {
+                dailyTarik += (h.amt || 0);
+                dailyAdmin += (h.fee || 0); // Logic says BANK_IN also adds to admin balance
+              } else if (logic === 'LABA_ACC') {
+                dailyAcc += (h.amt || 0);
+              } else if (logic === 'LABA_ADMIN') {
+                dailyAdmin += (h.amt || 0);
+              } else if (h.kat === 'KASBON' && !h.katId) {
+                // Compatibility for old kasbon records or if kasbon logic is special
+                // But usually kasbon pelunasan is handled via a separate action.
+              }
+            });
+
+            const totalOmset = dailySales + dailyAdmin + dailyAcc - dailyTarik;
+
+            return (
+              <div style={{ padding: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>+ Saldo Kas</span>
+                  <strong style={{ fontSize: '14px' }}>{formatRp(dailySales)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>+ Laba Admin</span>
+                  <strong style={{ fontSize: '14px' }}>{formatRp(dailyAdmin)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>+ Laba Acc</span>
+                  <strong style={{ fontSize: '14px' }}>{formatRp(dailyAcc)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1.5px dashed var(--border)', paddingBottom: '15px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>- Tarik Tunai</span>
+                  <strong style={{ fontSize: '14px', color: 'var(--danger)' }}>-{formatRp(dailyTarik)}</strong>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--accent-light)', padding: '15px', borderRadius: '15px' }}>
+                  <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '13px' }}>TOTAL OMSET</span>
+                  <strong style={{ color: 'var(--accent)', fontSize: '18px', fontWeight: 900 }}>
+                    {formatRp(totalOmset)}
+                  </strong>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Modal>
     </div>

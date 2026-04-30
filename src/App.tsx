@@ -21,6 +21,13 @@ import HistoryPage from './components/Pages/HistoryPage';
 import ReportsPage from './components/Pages/ReportsPage';
 import AccountPage from './components/Pages/AccountPage';
 import AuthPanel from './components/Auth/AuthPanel';
+import { useDataActions } from './hooks/useDataActions';
+
+// Modals
+import TransactionModal from './components/Modals/TransactionModal';
+import KasbonModal from './components/Modals/KasbonModal';
+import DepositModal from './components/Modals/DepositModal';
+import KontakModal from './components/Modals/KontakModal';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -35,6 +42,15 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [kasbon, setKasbon] = useState<Kasbon[]>([]);
   const [kontak, setKontak] = useState<Kontak[]>([]);
+
+  const { 
+    simpanTransaksi, 
+    tambahKasbon, 
+    bayarKasbon, 
+    simpanDeposit, 
+    tambahKontak, 
+    hapusKontak 
+  } = useDataActions(balances, profile);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -108,8 +124,38 @@ const App: React.FC = () => {
         )}
         {activeView === 'riwayat' && <HistoryPage history={history} profile={profile} onBack={() => setActiveView('beranda')} />}
         {activeView === 'laporan' && <ReportsPage history={history} balances={balances} onBack={() => setActiveView('beranda')} />}
-        {activeView === 'akun' && <AccountPage profile={profile} onBack={() => setActiveView('beranda')} />}
+        {activeView === 'akun' && <AccountPage profile={profile} balances={balances} onBack={() => setActiveView('beranda')} />}
       </main>
+
+      {/* Global Modals */}
+      <TransactionModal 
+        isOpen={modalType === 'transaksi'} 
+        onClose={() => setModalType(null)} 
+        profile={profile}
+        onSave={simpanTransaksi}
+      />
+
+      <KasbonModal 
+        isOpen={modalType === 'kasbon'} 
+        onClose={() => setModalType(null)} 
+        kasbonList={kasbon}
+        onAdd={tambahKasbon}
+        onPay={bayarKasbon}
+      />
+
+      <DepositModal 
+        isOpen={modalType === 'deposit'} 
+        onClose={() => setModalType(null)} 
+        onSave={simpanDeposit}
+      />
+
+      <KontakModal 
+        isOpen={modalType === 'kontak'} 
+        onClose={() => setModalType(null)} 
+        kontakList={kontak}
+        onAdd={tambahKontak}
+        onDelete={hapusKontak}
+      />
 
       <BottomNav activeView={activeView} setActiveView={setActiveView} onFabClick={() => setModalType('transaksi')} />
     </div>
