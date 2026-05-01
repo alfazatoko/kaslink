@@ -4,6 +4,17 @@ export interface UserProfile {
   toko: string;
   defaultCategory: string;
   categories: Category[];
+  colors?: CustomColors;
+}
+
+export interface CustomColors {
+  theme?: string;
+  appBg?: string;
+  bank?: string;
+  cash?: string;
+  admin?: string;
+  acc?: string;
+  tarik?: string;
 }
 
 export interface Category {

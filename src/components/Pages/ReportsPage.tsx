@@ -31,41 +31,52 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ history, profile, onBack }) =
   });
 
   useEffect(() => {
-    const filtered = history.filter(h => {
-      if (!h.tgl) return false;
-      const itemDate = h.tgl.split('T')[0];
-      return itemDate >= filterTglStart && itemDate <= filterTglEnd;
+    // 1. Create category map for O(1) lookup
+    const catMap: Record<string, any> = {};
+    profile?.categories.forEach(c => {
+      catMap[c.id] = c;
+      catMap[c.name] = c;
     });
 
-    const stats = filtered.reduce((acc, h) => {
-      const key = h.kat;
-      if (!acc[key]) acc[key] = { count: 0, total: 0 };
-      acc[key].count += 1;
-      acc[key].total += (h.amt || 0);
-      return acc;
-    }, {} as Record<string, { count: number, total: number }>);
-
+    const filtered: HistoryItem[] = [];
+    const stats: Record<string, { count: number, total: number }> = {};
     let sales = 0, admin = 0, acc = 0, tarik = 0, kasbon = 0, deposit = 0;
 
-    filtered.forEach(h => {
-      const cat = profile?.categories.find(c => c.id === h.katId || c.name === h.kat);
-      const logic = cat?.logicType;
+    // 2. Single pass processing
+    // Iterate from end to start if history is DESC, to get the 'latest' snapshots easily
+    for (let i = 0; i < history.length; i++) {
+      const h = history[i];
+      if (!h.tgl) continue;
+      
+      const itemDate = h.tgl.split('T')[0];
+      if (itemDate >= filterTglStart && itemDate <= filterTglEnd) {
+        filtered.push(h);
 
-      admin += (h.fee || 0);
+        // Update stats
+        const key = h.kat;
+        if (!stats[key]) stats[key] = { count: 0, total: 0 };
+        stats[key].count += 1;
+        stats[key].total += (h.amt || 0);
 
-      if (logic === 'BANK_OUT') sales += (h.amt || 0);
-      else if (logic === 'BANK_IN') tarik += (h.amt || 0);
-      else if (logic === 'LABA_ACC') acc += (h.amt || 0);
-      else if (logic === 'LABA_ADMIN') admin += (h.amt || 0);
-      else if (h.kat === 'KASBON') kasbon += (h.amt || 0);
-      else if (h.kat === 'DEPOSIT') deposit += (h.amt || 0);
-    });
+        // Logic processing
+        const cat = catMap[h.katId || ''] || catMap[h.kat || ''];
+        const logic = cat?.logicType;
 
-    const sisa = sales - tarik + kasbon; // Kasbon masuk juga menambah cash
+        admin += (h.fee || 0);
+
+        if (logic === 'BANK_OUT') sales += (h.amt || 0);
+        else if (logic === 'BANK_IN') tarik += (h.amt || 0);
+        else if (logic === 'LABA_ACC') acc += (h.amt || 0);
+        else if (logic === 'LABA_ADMIN') admin += (h.amt || 0);
+        else if (h.kat === 'KASBON') kasbon += (h.amt || 0);
+        else if (h.kat === 'DEPOSIT') deposit += (h.amt || 0);
+      }
+    }
+
+    const sisa = sales - tarik + kasbon;
     const total = sisa + admin + acc;
 
-    // Ambil saldo terakhir dari transaksi terakhir di periode ini
-    // history biasanya DESC (terbaru di atas), jadi ambil index 0 jika ada
+    // history usually DESC, so index 0 of filtered is the latest in period
     const lastItem = filtered[0]; 
 
     setReportData({

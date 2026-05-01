@@ -49,18 +49,42 @@ const Dashboard: React.FC<DashboardProps> = ({
   const dateStr = filterDate.toISOString().split('T')[0];
   const displayDate = filterDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
+  const colors = profile?.colors || {};
+
+  const getCardStyle = (bgColor?: string, isMain?: boolean) => {
+    if (!bgColor || bgColor === '#ffffff') return {};
+    return {
+      background: bgColor,
+      backgroundImage: 'none',
+      color: '#fff',
+      border: 'none',
+      boxShadow: isMain ? '0 10px 20px -5px rgba(0,0,0,0.15)' : 'none'
+    };
+  };
+
+  const getLabelStyle = (bgColor?: string) => {
+    if (!bgColor || bgColor === '#ffffff') return {};
+    return { color: 'rgba(255,255,255,0.8)' };
+  };
+
   return (
     <div id="view-beranda">
-      <div className="balance-card card-blue">
-        <div className="card-label">
+      <div 
+        className="balance-card card-blue" 
+        style={getCardStyle(colors.bank, true)}
+      >
+        <div className="card-label" style={getLabelStyle(colors.bank)}>
           Saldo Bank 
           <span className="rincian-btn" onClick={() => setModalType('rincian_bank')}>Rincian</span>
         </div>
         <div className="card-value">{formatRp(balances.bank)}</div>
       </div>
       
-      <div className="balance-card card-green">
-        <div className="card-label">
+      <div 
+        className="balance-card card-green"
+        style={getCardStyle(colors.cash, true)}
+      >
+        <div className="card-label" style={getLabelStyle(colors.cash)}>
           Saldo Kas Tunai 
           <span className="rincian-btn" onClick={() => setModalType('rincian_kas')}>Rincian</span>
         </div>
@@ -68,33 +92,33 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       <div className="quick-actions">
-        <div className="qa-btn" onClick={() => setModalType('kasbon')}>
-          <Wallet size={16} /> KASBON
+        <div className="qa-btn" onClick={() => setModalType('kasbon')} style={colors.theme ? { borderLeft: `4px solid ${colors.theme}` } : {}}>
+          <Wallet size={16} color={colors.theme || 'var(--accent)'} /> KASBON
         </div>
-        <div className="qa-btn" onClick={() => setModalType('deposit')}>
-          <Landmark size={16} /> DEPOSIT
+        <div className="qa-btn" onClick={() => setModalType('deposit')} style={colors.theme ? { borderLeft: `4px solid ${colors.theme}` } : {}}>
+          <Landmark size={16} color={colors.theme || 'var(--accent)'} /> DEPOSIT
         </div>
-        <div className="qa-btn" onClick={() => setModalType('kontak')}>
-          <Phone size={16} /> KONTAK
+        <div className="qa-btn" onClick={() => setModalType('kontak')} style={colors.theme ? { borderLeft: `4px solid ${colors.theme}` } : {}}>
+          <Phone size={16} color={colors.theme || 'var(--accent)'} /> KONTAK
         </div>
       </div>
 
       <div className="laba-grid">
-        <div className="laba-card">
-          <div className="laba-label">📊 LABA ADMIN</div>
-          <div className="laba-value">{formatRp(balances.admin)}</div>
+        <div className="laba-card" style={getCardStyle(colors.admin)}>
+          <div className="laba-label" style={getLabelStyle(colors.admin)}>📊 LABA ADMIN</div>
+          <div className="laba-value" style={colors.admin && colors.admin !== '#ffffff' ? { color: '#fff' } : {}}>{formatRp(balances.admin)}</div>
         </div>
-        <div className="laba-card">
-          <div className="laba-label">🎧 LABA ACC</div>
-          <div className="laba-value">{formatRp(balances.acc)}</div>
+        <div className="laba-card" style={getCardStyle(colors.acc)}>
+          <div className="laba-label" style={getLabelStyle(colors.acc)}>🎧 LABA ACC</div>
+          <div className="laba-value" style={colors.acc && colors.acc !== '#ffffff' ? { color: '#fff' } : {}}>{formatRp(balances.acc)}</div>
         </div>
-        <div className="laba-card">
-          <div className="laba-label">🏧 TARIK TUNAI</div>
-          <div className="laba-value">{formatRp(balances.tarik)}</div>
+        <div className="laba-card" style={getCardStyle(colors.tarik)}>
+          <div className="laba-label" style={getLabelStyle(colors.tarik)}>🏧 TARIK TUNAI</div>
+          <div className="laba-value" style={colors.tarik && colors.tarik !== '#ffffff' ? { color: '#fff' } : {}}>{formatRp(balances.tarik)}</div>
         </div>
-        <div className="laba-card">
+        <div className="laba-card" style={colors.theme && colors.theme !== '#ffffff' ? { border: `1.5px solid ${colors.theme}` } : {}}>
           <div className="laba-label">📈 DEPOSIT HARI INI</div>
-          <div className="laba-value">
+          <div className="laba-value" style={colors.theme ? { color: colors.theme } : {}}>
             {formatRp(history
               .filter(h => {
                 const todayStr = new Date().toISOString().split('T')[0];

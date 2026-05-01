@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { HistoryItem, UserProfile } from '../../types';
 import { RotateCcw, ArrowLeft, Calendar, Filter, ChevronDown, ChevronUp, Clock, Info } from 'lucide-react';
 import { formatRp } from '../../utils/formatters';
@@ -14,34 +14,48 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
   const [filterTglStart, setFilterTglStart] = useState('');
   const [filterTglEnd, setFilterTglEnd] = useState('');
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(50);
 
-  const filteredHistory = history.filter(h => {
-    // Logic Filter Kategori (Prioritas ID)
-    let matchKat = true;
-    if (filterKat !== '') {
-      const currentCat = profile?.categories.find(c => c.id === filterKat);
+  // Optimize category lookup
+  const categoryMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    profile?.categories.forEach(c => {
+      map[c.id] = c;
+      map[c.name] = c;
+    });
+    return map;
+  }, [profile?.categories]);
+
+  const filteredHistory = useMemo(() => {
+    return history.filter(h => {
+      // Logic Filter Kategori (Prioritas ID)
+      let matchKat = true;
+      if (filterKat !== '') {
+        const idMatch = h.katId === filterKat;
+        const nameMatch = !h.katId && categoryMap[filterKat] && h.kat === categoryMap[filterKat].name;
+        const systemMatch = h.kat === filterKat; // Untuk KASBON/DEPOSIT
+        
+        matchKat = idMatch || nameMatch || systemMatch;
+      }
       
-      const idMatch = h.katId === filterKat;
-      const nameMatch = !h.katId && currentCat && h.kat === currentCat.name;
-      const systemMatch = h.kat === filterKat; // Untuk KASBON/DEPOSIT
+      let matchTgl = true;
+      if (h.tgl) {
+        const itemDate = h.tgl.split('T')[0];
+        if (filterTglStart && itemDate < filterTglStart) matchTgl = false;
+        if (filterTglEnd && itemDate > filterTglEnd) matchTgl = false;
+      }
       
-      matchKat = idMatch || nameMatch || systemMatch;
-    }
-    
-    let matchTgl = true;
-    if (h.tgl) {
-      const itemDate = h.tgl.split('T')[0];
-      if (filterTglStart && itemDate < filterTglStart) matchTgl = false;
-      if (filterTglEnd && itemDate > filterTglEnd) matchTgl = false;
-    }
-    
-    return matchKat && matchTgl;
-  });
+      return matchKat && matchTgl;
+    });
+  }, [history, filterKat, filterTglStart, filterTglEnd, categoryMap]);
+
+  const displayedHistory = filteredHistory.slice(0, displayLimit);
 
   const resetFilter = () => {
     setFilterKat('');
     setFilterTglStart('');
     setFilterTglEnd('');
+    setDisplayLimit(50);
   };
 
   const getJam = (tgl: string) => {
@@ -137,11 +151,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
               </tr>
             </thead>
             <tbody>
-              {filteredHistory.length > 0 ? (
-                filteredHistory.map((h, i) => {
+              {displayedHistory.length > 0 ? (
+                displayedHistory.map((h, i) => {
                   const id = h.id || i;
                   const isExpanded = expandedId === id;
-                  const cat = profile?.categories.find(c => c.id === h.katId || c.name === h.kat);
+                  const cat = categoryMap[h.katId || ''] || categoryMap[h.kat || ''];
                   const logic = cat?.logicType;
                   const isMinus = h.kat === 'KASBON' || logic === 'BANK_IN';
                   const amtClass = isMinus ? 'amt-minus' : 'amt-plus';
@@ -197,6 +211,17 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
               )}
             </tbody>
           </table>
+          
+          {filteredHistory.length > displayLimit && (
+            <div className="load-more-container">
+              <button 
+                className="btn-load-more" 
+                onClick={() => setDisplayLimit(prev => prev + 50)}
+              >
+                Tampilkan Lebih Banyak ({filteredHistory.length - displayLimit} data lagi)
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -392,6 +417,29 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ history, profile, onBack }) =
           font-weight: 600;
         }
         
+        
+        .load-more-container {
+          padding: 20px;
+          display: flex;
+          justify-content: center;
+          background: var(--card);
+        }
+        .btn-load-more {
+          background: var(--accent-light);
+          color: var(--accent);
+          border: 1px solid var(--accent);
+          padding: 10px 24px;
+          border-radius: 12px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .btn-load-more:hover {
+          background: var(--accent);
+          color: white;
+        }
+
         @media (max-width: 640px) {
           .filter-grid { flex-direction: column; align-items: stretch; }
           .filter-item { min-width: 100%; }

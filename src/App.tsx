@@ -106,8 +106,31 @@ const App: React.FC = () => {
 
   if (!user) return <AuthPanel />;
 
+  const themeColor = profile?.colors?.theme || '#2563eb';
+  const appBg = profile?.colors?.appBg || '#f8fafc';
+
   return (
     <div className="app-container">
+      <style>{`
+        :root {
+          --accent: ${themeColor} !important;
+          --accent-light: ${themeColor}15 !important;
+          --bg: ${appBg} !important;
+        }
+        body {
+          background-color: ${appBg} !important;
+        }
+        .app-container {
+          background-color: ${appBg} !important;
+        }
+        .btn-submit, .fab-btn {
+          background: var(--accent) !important;
+          box-shadow: 0 4px 12px ${themeColor}40 !important;
+        }
+        .nav-item.active {
+          color: var(--accent) !important;
+        }
+      `}</style>
       <Header profile={profile} />
       
       <main className="container">

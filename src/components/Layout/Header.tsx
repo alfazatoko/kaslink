@@ -33,19 +33,28 @@ const Header: React.FC<HeaderProps> = ({ profile }) => {
 
   const [viewMode, setViewMode] = useState<'hp' | 'tablet' | 'pc'>('pc');
 
+  const updateScale = (mode: 'hp' | 'tablet' | 'pc') => {
+    setViewMode(mode);
+    const root = document.documentElement;
+    root.setAttribute('data-view-mode', mode);
+    
+    if (mode === 'hp') root.style.setProperty('--app-width', '450px');
+    else if (mode === 'tablet') root.style.setProperty('--app-width', '700px');
+    else root.style.setProperty('--app-width', '100%');
+  };
+
   const toggleScale = () => {
     let nextMode: 'hp' | 'tablet' | 'pc' = 'hp';
     if (viewMode === 'hp') nextMode = 'tablet';
     else if (viewMode === 'tablet') nextMode = 'pc';
     else nextMode = 'hp';
-
-    setViewMode(nextMode);
-    
-    const root = document.documentElement;
-    if (nextMode === 'hp') root.style.setProperty('--app-width', '450px');
-    else if (nextMode === 'tablet') root.style.setProperty('--app-width', '800px');
-    else root.style.setProperty('--app-width', '100%');
+    updateScale(nextMode);
   };
+
+  useEffect(() => {
+    // Initial sync of CSS variables on mount
+    updateScale(viewMode);
+  }, []);
 
   return (
     <div className="header">

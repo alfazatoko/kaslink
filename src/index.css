@@ -15,7 +15,16 @@
   --accent: #3b82f6; --accent-light: #1e3a8a; --border: #334155;
 }
 
-body { background: #cbd5e1; color: var(--text); transition: background 0.3s; font-size: 14px; min-height: 100vh; overflow-x: hidden; }
+body { 
+  background: #cbd5e1; 
+  color: var(--text); 
+  transition: background 0.3s ease-in-out; 
+  font-size: 14px; 
+  min-height: 100vh; 
+  overflow-x: hidden; 
+  display: flex;
+  flex-direction: column;
+}
 .dark body { background: #020617; }
 
 /* AUTH UI */
@@ -26,12 +35,14 @@ body { background: #cbd5e1; color: var(--text); transition: background 0.3s; fon
 .app-container { 
   min-height: 100vh; 
   padding-bottom: 120px; 
+  width: 100%;
   max-width: var(--app-width); 
   margin: 0 auto; 
   background: var(--bg); 
-  box-shadow: 0 0 60px rgba(0,0,0,0.1);
+  box-shadow: 0 0 60px rgba(0,0,0,0.15);
   position: relative;
-  transition: max-width 0.3s ease-in-out;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
 }
 
 /* HEADER */
@@ -46,7 +57,7 @@ body { background: #cbd5e1; color: var(--text); transition: background 0.3s; fon
   top: 0; 
   z-index: 1000;
   width: 100%;
-  max-width: var(--app-width);
+  margin: 0 auto;
 }
 .brand-box { display: flex; align-items: center; gap: 12px; }
 .logo-img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; cursor: pointer; }
@@ -96,6 +107,7 @@ body { background: #cbd5e1; color: var(--text); transition: background 0.3s; fon
   justify-content: space-between; 
   align-items: center; 
   z-index: 2000; 
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 9px; font-weight: 700; color: var(--text-muted); cursor: pointer; border: none; background: none; }
 .nav-item.active { color: var(--accent); }
@@ -137,6 +149,7 @@ body { background: #cbd5e1; color: var(--text); transition: background 0.3s; fon
   padding-bottom: 100px; 
   overflow-y: auto; 
   animation: slideUp 0.3s ease-out; 
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
@@ -157,7 +170,6 @@ body { background: #cbd5e1; color: var(--text); transition: background 0.3s; fon
 
 /* AUTO LANDSCAPE */
 @media screen and (orientation: landscape) and (max-height: 500px) {
-  :root { --app-width: 100% !important; }
   .app-container { padding-bottom: 80px; }
   .header { padding: 8px 20px; }
   .bottom-nav { padding-bottom: 8px; }
