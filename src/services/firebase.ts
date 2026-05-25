@@ -7,26 +7,10 @@ import {
   signOut, 
   GoogleAuthProvider, 
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   updatePassword
 } from "firebase/auth";
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  limit, 
-  onSnapshot, 
-  serverTimestamp, 
-  where, 
-  deleteDoc, 
-  getDocs,
-  enableIndexedDbPersistence
-} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDrHGuUG9vVqCPSsy8cOUEBhvG32qJqyWA",
@@ -40,42 +24,18 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Enable Offline Persistence
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-        console.warn('Persistence failed: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-        console.warn('Persistence failed: Browser not supported');
-    }
-});
-
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export { 
   auth, 
-  db, 
   googleProvider, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  updatePassword,
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  limit, 
-  onSnapshot, 
-  serverTimestamp, 
-  where, 
-  deleteDoc, 
-  getDocs 
+  updatePassword
 };

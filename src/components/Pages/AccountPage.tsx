@@ -2,29 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile, Category, Balances, CustomColors } from '../../types';
 import { 
   auth, 
-  db, 
-  doc, 
   signOut, 
-  setDoc,
   updatePassword 
 } from '../../services/firebase';
-import { ArrowLeft, Save, LogOut, Tags, Plus, Trash2, ChevronDown, ChevronUp, RotateCcw, AlertTriangle, User, Palette, ChevronRight, Wallet } from 'lucide-react';
+import { upsertProfile } from '../../services/supabase';
+import { ArrowLeft, Save, LogOut, Tags, Plus, Trash2, ChevronRight, RotateCcw, AlertTriangle, User, Palette, Wallet, Sparkles } from 'lucide-react';
 import { generateId } from '../../utils/formatters';
-import { useDataActions } from '../../hooks/useDataActions';
+import { chatWithGemini, initGemini } from '../../services/gemini';
 import Modal from '../Common/Modal';
 
 interface AccountPageProps {
   profile: UserProfile | null;
   balances: Balances;
   onBack: () => void;
+  onResetBalances: () => Promise<void>;
+  onResetAllData: () => Promise<void>;
 }
 
-const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) => {
-  const { resetBalances, resetAllData } = useDataActions(balances, profile);
+const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack, onResetBalances, onResetAllData }) => {
   
   const [toko, setToko] = useState('');
   const [defaultKatId, setDefaultKatId] = useState('');
   const [newPass, setNewPass] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [geminiEnabled, setGeminiEnabled] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [categories, setCategories] = useState<Category[]>([]);
   const [colors, setColors] = useState<CustomColors>({});
   const [showPass, setShowPass] = useState(false);
@@ -32,7 +34,6 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
   const [showConfirm, setShowConfirm] = useState<'saldo' | 'semua' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Accordion States
   const [openSection, setOpenSection] = useState<string | null>(null);
   
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -48,6 +49,8 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
       }));
       setCategories(existingCats);
       setColors(profile.colors || {});
+      setGeminiKey(profile.geminiKey || '');
+      setGeminiEnabled(profile.geminiEnabled || false);
 
       const defCat = existingCats.find(c => c.id === profile.defaultCategory || c.name === profile.defaultCategory);
       setDefaultKatId(defCat?.id || '');
@@ -81,12 +84,14 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
     setSaveStatus('saving');
     try {
       const uid = auth.currentUser.uid;
-      await setDoc(doc(db, `${uid}_profile`, 'data'), {
+      await upsertProfile(uid, {
         toko,
         defaultCategory: defaultKatId,
         categories,
-        colors
-      }, { merge: true });
+        colors,
+        geminiKey,
+        geminiEnabled
+      });
 
       if (newPass) {
         try {
@@ -114,10 +119,10 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
     setIsProcessing(true);
     try {
       if (showConfirm === 'saldo') {
-        await resetBalances();
+        await onResetBalances();
         alert("Semua Saldo Berhasil di Reset ke 0!");
       } else {
-        await resetAllData();
+        await onResetAllData();
         alert("Semua Data Berhasil Dihapus!");
       }
     } catch (e) {
@@ -315,7 +320,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
               <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
                 <label>Warna Kartu Laba ACC</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '2px' }} value={colors.acc || '#ffffff'} onChange={(e) => updateColor('acc', e.target.value)} />
+                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '5px' }} value={colors.acc || '#ffffff'} onChange={(e) => updateColor('acc', e.target.value)} />
                   <div style={{ flex: 1, background: colors.acc || '#ffffff', border: colors.acc === '#ffffff' ? '1px solid var(--border)' : 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: colors.acc === '#ffffff' ? 'var(--text)' : '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW LABA ACC</div>
                 </div>
               </div>
@@ -329,6 +334,72 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack }) 
               </div>
             </div>
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '15px', textAlign: 'center' }}>* Warna putih akan menggunakan tampilan standar kartu.</p>
+          </div>
+        )}
+
+        {/* Section: Gemini AI */}
+        <SectionHeader id="gemini" icon={Sparkles} title="AI Asisten (Gemini)" active={openSection === 'gemini'} />
+        {openSection === 'gemini' && (
+          <div style={{ padding: '5px 10px 20px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '15px', lineHeight: '1.5' }}>
+              Hubungkan dengan Gemini AI untuk mendapatkan bantuan pintar seputar penggunaan aplikasi KINK.
+            </p>
+            <div className="form-group">
+              <label>API Key Gemini</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="Masukkan Gemini API Key"
+                  value={geminiKey}
+                  onChange={(e) => { setGeminiKey(e.target.value); setGeminiStatus('idle'); }}
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '5px' }}>
+                Dapatkan API Key di <a href="https://aistudio.google.com/apikey" target="_blank" style={{ color: 'var(--accent)' }}>aistudio.google.com/apikey</a>
+              </p>
+            </div>
+            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
+              <label style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={geminiEnabled}
+                  onChange={(e) => setGeminiEnabled(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
+                />
+                Aktifkan AI Asisten
+              </label>
+            </div>
+            {geminiKey && (
+              <button 
+                onClick={async () => {
+                  if (!geminiKey) return;
+                  setGeminiStatus('testing');
+                  try {
+                    initGemini(geminiKey);
+                    await chatWithGemini('Halo, balas dengan "OK" saja untuk test koneksi.');
+                    setGeminiStatus('ok');
+                    setTimeout(() => setGeminiStatus('idle'), 3000);
+                  } catch {
+                    setGeminiStatus('error');
+                    setTimeout(() => setGeminiStatus('idle'), 3000);
+                  }
+                }}
+                className="btn-submit" 
+                style={{ 
+                  marginTop: '10px', 
+                  fontSize: '12px', 
+                  padding: '10px',
+                  background: geminiStatus === 'ok' ? 'var(--success)' : geminiStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
+                }}
+              >
+                {geminiStatus === 'idle' && 'Uji Koneksi'}
+                {geminiStatus === 'testing' && 'Menguji...'}
+                {geminiStatus === 'ok' && '✓ Terhubung'}
+                {geminiStatus === 'error' && '✗ Gagal'}
+              </button>
+            )}
           </div>
         )}
 

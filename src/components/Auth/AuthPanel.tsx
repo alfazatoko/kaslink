@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { 
-  auth, 
-  db, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
+import React, { useState, useEffect } from 'react';
+import {
+  auth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   googleProvider,
-  setDoc,
-  doc
 } from '../../services/firebase';
+import { upsertProfile, getProfile } from '../../services/supabase';
 
 const AuthPanel: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -16,6 +16,23 @@ const AuthPanel: React.FC = () => {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [showPass, setShowPass] = useState(false);
+
+  const defaultCategories = [
+    { id: "cat_bank_out", name: "Transfer Bank", logicType: "BANK_OUT" as const },
+    { id: "cat_bank_in", name: "Tarik Tunai", logicType: "BANK_IN" as const },
+    { id: "cat_acc", name: "Aksesoris", logicType: "LABA_ACC" as const },
+    { id: "cat_admin", name: "Admin/Fee", logicType: "LABA_ADMIN" as const }
+  ];
+
+  const initProfile = async (uid: string, email: string) => {
+    await upsertProfile(uid, {
+      email,
+      phone: phone || '-',
+      toko: "KINK",
+      defaultCategory: "cat_bank_out",
+      categories: defaultCategories
+    });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,48 +47,68 @@ const AuthPanel: React.FC = () => {
     e.preventDefault();
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = res.user.uid;
-      
-      await setDoc(doc(db, `${uid}_profile`, 'data'), {
-        email,
-        phone: phone || '-',
-        toko: "KINK",
-        defaultCategory: "Seabank",
-        categories: [
-          { name: "Seabank", role: "bank_out" },
-          { name: "Dana", role: "bank_out" },
-          { name: "Orderkuota", role: "bank_out" },
-          { name: "Tarik Tunai", role: "bank_in" },
-          { name: "Aksesoris", role: "cash_in" }
-        ]
-      });
-      
-      await setDoc(doc(db, `${uid}_balances`, 'data'), {
-        bank: 0, kas: 0, admin: 0, acc: 0, tarik: 0, depo: 0, sales: 0
-      });
-      
+      await initProfile(res.user.uid, email);
       alert("Akun berhasil dibuat!");
     } catch (err: any) {
       alert("Gagal: " + err.message);
     }
   };
 
-  const handleGoogleLogin = async () => {
+    const handleGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const res = await signInWithPopup(auth, googleProvider);
+      await syncProfileAfterLogin(res.user.uid, res.user.email || '');
+    } catch (err: any) {
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr: any) {
+          alert("Gagal Login Google: " + redirectErr.message);
+        }
+      } else if (err.code === 'auth/operation-not-allowed') {
+        alert("Login Google belum diaktifkan. Aktifkan di Firebase Console > Authentication > Sign-in method > Google.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        alert("Domain ini belum terdaftar. Tambahkan domain di Firebase Console > Authentication > Settings > Authorized domains.");
+      } else {
+        alert("Gagal Login Google: " + err.message);
+      }
+    }
+  };
+
+  const handleRedirectResult = async () => {
+    try {
+      const res = await getRedirectResult(auth);
+      if (res) {
+        await syncProfileAfterLogin(res.user.uid, res.user.email || '');
+      }
     } catch (err: any) {
       alert("Gagal Login Google: " + err.message);
     }
   };
 
+  const syncProfileAfterLogin = async (uid: string, email: string) => {
+    try {
+      const existing = await getProfile(uid);
+      if (!existing) {
+        await initProfile(uid, email);
+      }
+    } catch (err: any) {
+      alert("Gagal menyimpan profil: " + err.message + ". Coba periksa koneksi database Supabase.");
+    }
+  };
+
+  useEffect(() => {
+    handleRedirectResult();
+  }, []);
+
   return (
     <div className="auth-container">
       <div className="login-card">
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <img 
-            src="/kink_logo.png" 
-            style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }} 
-            alt="Logo" 
+          <img
+            src="/kink_logo.png"
+            style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '15px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
+            alt="Logo"
           />
           <h1 style={{ fontSize: '32px', fontWeight: 900, color: 'var(--accent)', letterSpacing: '-1px' }}>
             KINK <span style={{ fontSize: '12px', opacity: 0.5, fontWeight: 700 }}>v2.0</span>
@@ -85,28 +122,28 @@ const AuthPanel: React.FC = () => {
             <form onSubmit={handleLogin}>
               <div className="form-group">
                 <label>Email</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  placeholder="owner@kink.id" 
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="owner@kink.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required 
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Password</label>
                 <div className="password-wrapper" style={{ position: 'relative' }}>
-                  <input 
-                    type={showPass ? 'text' : 'password'} 
-                    className="form-control" 
-                    placeholder="••••••••" 
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    className="form-control"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required 
+                    required
                   />
-                  <span 
-                    className="eye-icon" 
+                  <span
+                    className="eye-icon"
                     style={{ position: 'absolute', right: '15px', top: '12px', cursor: 'pointer' }}
                     onClick={() => setShowPass(!showPass)}
                   >
@@ -131,36 +168,36 @@ const AuthPanel: React.FC = () => {
             <form onSubmit={handleRegister}>
               <div className="form-group">
                 <label>Email</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
+                <input
+                  type="email"
+                  className="form-control"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required 
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>WhatsApp</label>
-                <input 
-                  type="tel" 
-                  className="form-control" 
+                <input
+                  type="tel"
+                  className="form-control"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  required 
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Password</label>
                 <div className="password-wrapper" style={{ position: 'relative' }}>
-                  <input 
-                    type={showPass ? 'text' : 'password'} 
-                    className="form-control" 
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    className="form-control"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required 
+                    required
                   />
-                  <span 
-                    className="eye-icon" 
+                  <span
+                    className="eye-icon"
                     style={{ position: 'absolute', right: '15px', top: '12px', cursor: 'pointer' }}
                     onClick={() => setShowPass(!showPass)}
                   >

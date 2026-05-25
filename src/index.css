@@ -34,7 +34,7 @@ body {
 /* APP UI */
 .app-container { 
   min-height: 100vh; 
-  padding-bottom: 120px; 
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); 
   width: 100%;
   max-width: var(--app-width); 
   margin: 0 auto; 
@@ -94,7 +94,7 @@ body {
 
 /* BOTTOM NAV & FAB */
 .bottom-nav { 
-  position: fixed; 
+  position: absolute; 
   bottom: 0; 
   left: 50%; 
   transform: translateX(-50%);
@@ -102,7 +102,8 @@ body {
   max-width: var(--app-width);
   background: var(--card); 
   border-top: 1px solid var(--border); 
-  padding: 6px 10px 20px; 
+  /* Safe Area: padding-bottom otomatis menyesuaikan nav ori HP */
+  padding: 6px 10px calc(2px + env(safe-area-inset-bottom, 0px)); 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
@@ -170,7 +171,9 @@ body {
 
 /* AUTO LANDSCAPE */
 @media screen and (orientation: landscape) and (max-height: 500px) {
-  .app-container { padding-bottom: 80px; }
+  .app-container { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
   .header { padding: 8px 20px; }
-  .bottom-nav { padding-bottom: 8px; }
+  /* Landscape: env(safe-area-inset-bottom) = 0 karena nav ori HP tidak tampil.
+     Base padding 24px jadi kompensasi visual agar nav turun ke tepi bawah layar. */
+  .bottom-nav { padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px)); }
 }

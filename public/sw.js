@@ -2,10 +2,8 @@ const CACHE_NAME = 'kink-v4';
 const ASSETS = [
   '/',
   '/index.html',
-  '/firebase-config.js',
   '/logo.png',
   '/manifest.json'
-
 ];
 
 self.addEventListener('install', (e) => {

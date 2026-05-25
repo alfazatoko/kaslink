@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Balances, UserProfile, HistoryItem, Kasbon, Kontak } from '../../types';
 import { Wallet, Landmark, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useDataActions } from '../../hooks/useDataActions';
 import { formatRp } from '../../utils/formatters';
 
 // Modals
@@ -15,6 +14,12 @@ interface DashboardProps {
   kontak: Kontak[];
   modalType: 'transaksi' | 'kasbon' | 'deposit' | 'kontak' | 'rincian_bank' | 'rincian_kas' | null;
   setModalType: (type: 'transaksi' | 'kasbon' | 'deposit' | 'kontak' | 'rincian_bank' | 'rincian_kas' | null) => void;
+  onSimpanTransaksi: (katId: string, nom: number, fee: number, ket: string) => Promise<void>;
+  onTambahKasbon: (nama: string, nominal: number) => Promise<void>;
+  onBayarKasbon: (id: string, nominal: number, nama: string) => Promise<void>;
+  onSimpanDeposit: (tujuan: 'bank' | 'kas', nominal: number) => Promise<void>;
+  onTambahKontak: (nama: string, wa: string, catatan: string) => Promise<void>;
+  onHapusKontak: (id: string) => Promise<void>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
@@ -24,16 +29,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   kasbon, 
   kontak, 
   modalType, 
-  setModalType 
+  setModalType,
+  onSimpanTransaksi,
+  onTambahKasbon,
+  onBayarKasbon,
+  onSimpanDeposit,
+  onTambahKontak,
+  onHapusKontak
 }) => {
-  const { 
-    simpanTransaksi, 
-    tambahKasbon, 
-    bayarKasbon, 
-    simpanDeposit, 
-    tambahKontak, 
-    hapusKontak 
-  } = useDataActions(balances, profile);
 
   const [filterDate, setFilterDate] = useState(new Date());
 

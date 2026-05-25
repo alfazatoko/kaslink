@@ -27,8 +27,14 @@ const Header: React.FC<HeaderProps> = ({ profile }) => {
     }
   };
 
+  useEffect(() => {
+    const saved = localStorage.getItem('kink-dark-mode');
+    if (saved === 'true') document.body.classList.add('dark');
+  }, []);
+
   const toggleMode = () => {
-    document.body.classList.toggle('dark');
+    const isDark = document.body.classList.toggle('dark');
+    localStorage.setItem('kink-dark-mode', isDark ? 'true' : 'false');
   };
 
   const [viewMode, setViewMode] = useState<'hp' | 'tablet' | 'pc'>('pc');
