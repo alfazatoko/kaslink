@@ -12,8 +12,6 @@ import {
 } from './services/supabase';
 import { User } from 'firebase/auth';
 import { UserProfile, Balances, HistoryItem, Kasbon, Kontak } from './types';
-import { Sparkles } from 'lucide-react';
-
 import Header from './components/Layout/Header';
 import BottomNav from './components/Layout/BottomNav';
 import Dashboard from './components/Pages/Dashboard';
@@ -27,9 +25,6 @@ import TransactionModal from './components/Modals/TransactionModal';
 import KasbonModal from './components/Modals/KasbonModal';
 import DepositModal from './components/Modals/DepositModal';
 import KontakModal from './components/Modals/KontakModal';
-import AiAssistantModal from './components/Modals/AiAssistantModal';
-import { initGemini } from './services/gemini';
-
 // ============================================================
 // Error Boundary — menangkap crash React dan tampilkan pesan
 // ============================================================
@@ -91,7 +86,6 @@ const AppInner: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<'beranda' | 'riwayat' | 'laporan' | 'akun'>('beranda');
   const [modalType, setModalType] = useState<'transaksi' | 'kasbon' | 'deposit' | 'kontak' | 'rincian_bank' | 'rincian_kas' | null>(null);
-  const [showAi, setShowAi] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [balances, setBalances] = useState<Balances>({
@@ -144,7 +138,6 @@ const AppInner: React.FC = () => {
       try {
         const prof = await getProfile(uid);
         setProfile(prof);
-        if (prof?.geminiKey && prof?.geminiEnabled) initGemini(prof.geminiKey);
       } catch (err) { console.error('Gagal memuat profil:', err); }
 
       try {
@@ -173,7 +166,6 @@ const AppInner: React.FC = () => {
     // Realtime subscriptions
     const unsubProfile = subscribeProfile(uid, (p) => {
       setProfile(p);
-      if (p?.geminiKey && p?.geminiEnabled) initGemini(p.geminiKey);
     });
 
     const unsubBalances = subscribeBalances(uid, todayStr, (b) => {
@@ -215,8 +207,31 @@ const AppInner: React.FC = () => {
 
   if (!user) return <AuthPanel />;
 
-  const themeColor = profile?.colors?.theme || '#2563eb';
-  const appBg = profile?.colors?.appBg || '#f8fafc';
+  const tId = profile?.colors?.theme || 'blue';
+  let themeColor = '#2563eb';
+  let appBg = '#f8fafc';
+  let cardBg = '#ffffff';
+  let textCol = '#1e293b';
+  let textMut = '#64748b';
+  let borderCol = '#e2e8f0';
+
+  if (tId === 'emerald') {
+    themeColor = '#10b981';
+    appBg = '#f0fdf4';
+  } else if (tId === 'dark') {
+    themeColor = '#3b82f6';
+    appBg = '#0f172a';
+    cardBg = '#1e293b';
+    textCol = '#f8fafc';
+    textMut = '#94a3b8';
+    borderCol = '#334155';
+  } else if (tId === 'gold') {
+    themeColor = '#d97706';
+    appBg = '#fffbeb';
+  } else if (tId.startsWith('#')) {
+    themeColor = tId;
+    appBg = profile?.colors?.appBg || '#f8fafc';
+  }
 
   return (
     <div className="app-container">
@@ -225,12 +240,18 @@ const AppInner: React.FC = () => {
           --accent: ${themeColor} !important;
           --accent-light: ${themeColor}15 !important;
           --bg: ${appBg} !important;
+          --container-bg: ${appBg} !important;
+          --card: ${cardBg} !important;
+          --text: ${textCol} !important;
+          --text-muted: ${textMut} !important;
+          --border: ${borderCol} !important;
         }
-        body { background-color: ${appBg} !important; }
+        body { background-color: ${appBg} !important; color: ${textCol} !important; }
         .app-container { background-color: ${appBg} !important; }
         .btn-submit, .fab-btn {
           background: var(--accent) !important;
           box-shadow: 0 4px 12px ${themeColor}40 !important;
+          color: white !important;
         }
         .nav-item.active { color: var(--accent) !important; }
       `}</style>
@@ -317,28 +338,7 @@ const AppInner: React.FC = () => {
         onFabClick={() => setModalType('transaksi')}
       />
 
-      {/* AI Assistant Button */}
-      {profile?.geminiEnabled && (
-        <button
-          onClick={() => setShowAi(true)}
-          style={{
-            position: 'fixed', bottom: '100px', right: '25px',
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white', border: 'none',
-            boxShadow: '0 8px 20px rgba(102,126,234,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 3000, transition: 'transform 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-          title="AI Asisten"
-        >
-          <Sparkles size={24} />
-        </button>
-      )}
 
-      <AiAssistantModal isOpen={showAi} onClose={() => setShowAi(false)} />
     </div>
   );
 };

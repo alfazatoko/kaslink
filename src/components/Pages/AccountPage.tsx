@@ -6,10 +6,16 @@ import {
   updatePassword 
 } from '../../services/firebase';
 import { upsertProfile } from '../../services/supabase';
-import { ArrowLeft, Save, LogOut, Tags, Plus, Trash2, ChevronRight, RotateCcw, AlertTriangle, User, Palette, Wallet, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, LogOut, Tags, Plus, Trash2, ChevronRight, RotateCcw, AlertTriangle, User, Palette, Wallet } from 'lucide-react';
 import { generateId } from '../../utils/formatters';
-import { chatWithGemini, initGemini } from '../../services/gemini';
 import Modal from '../Common/Modal';
+
+const PREDEFINED_THEMES = [
+  { id: 'blue', name: 'Biru Laut (Ocean)', desc: 'Profesional & Bersih', color: '#2563eb' },
+  { id: 'emerald', name: 'Hijau Zamrud', desc: 'Segar & Menenangkan', color: '#10b981' },
+  { id: 'dark', name: 'Mode Gelap (Dark)', desc: 'Nyaman di Mata', color: '#1e293b' },
+  { id: 'gold', name: 'Emas Premium', desc: 'Elegan & Mewah', color: '#d97706' }
+];
 
 interface AccountPageProps {
   profile: UserProfile | null;
@@ -24,9 +30,6 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack, on
   const [toko, setToko] = useState('');
   const [defaultKatId, setDefaultKatId] = useState('');
   const [newPass, setNewPass] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [geminiEnabled, setGeminiEnabled] = useState(false);
-  const [geminiStatus, setGeminiStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [categories, setCategories] = useState<Category[]>([]);
   const [colors, setColors] = useState<CustomColors>({});
   const [showPass, setShowPass] = useState(false);
@@ -49,8 +52,6 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack, on
       }));
       setCategories(existingCats);
       setColors(profile.colors || {});
-      setGeminiKey(profile.geminiKey || '');
-      setGeminiEnabled(profile.geminiEnabled || false);
 
       const defCat = existingCats.find(c => c.id === profile.defaultCategory || c.name === profile.defaultCategory);
       setDefaultKatId(defCat?.id || '');
@@ -88,9 +89,7 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack, on
         toko,
         defaultCategory: defaultKatId,
         categories,
-        colors,
-        geminiKey,
-        geminiEnabled
+        colors
       });
 
       if (newPass) {
@@ -265,143 +264,46 @@ const AccountPage: React.FC<AccountPageProps> = ({ profile, balances, onBack, on
           </div>
         )}
 
-        {/* Section: Colors Theme */}
-        <SectionHeader id="colors_theme" icon={Palette} title="Pengaturan Warna Tema" active={openSection === 'colors_theme'} />
-        {openSection === 'colors_theme' && (
+        {/* Section: Themes */}
+        <SectionHeader id="theme" icon={Palette} title="Pilih Tema Aplikasi" active={openSection === 'theme'} />
+        {openSection === 'theme' && (
           <div style={{ padding: '5px 15px 25px', animation: 'slideDown 0.3s ease-out' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
-              <div className="form-group">
-                <label>Warna Tema Utama (Tombol & Aksen)</label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <input type="color" className="form-control" style={{ height: '50px', width: '80px', padding: '5px', cursor: 'pointer' }} value={colors.theme || '#2563eb'} onChange={(e) => updateColor('theme', e.target.value)} />
-                  <input type="text" className="form-control" value={colors.theme || '#2563eb'} onChange={(e) => updateColor('theme', e.target.value)} style={{ textTransform: 'uppercase' }} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Warna Background Aplikasi</label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <input type="color" className="form-control" style={{ height: '50px', width: '80px', padding: '5px', cursor: 'pointer' }} value={colors.appBg || '#f8fafc'} onChange={(e) => updateColor('appBg', e.target.value)} />
-                  <input type="text" className="form-control" value={colors.appBg || '#f8fafc'} onChange={(e) => updateColor('appBg', e.target.value)} style={{ textTransform: 'uppercase' }} />
-                </div>
-              </div>
+              {PREDEFINED_THEMES.map(t => {
+                const isSelected = colors.theme === t.id || (!colors.theme && t.id === 'blue');
+                return (
+                  <div 
+                    key={t.id}
+                    onClick={() => updateColor('theme', t.id)}
+                    style={{ 
+                      background: 'var(--card)', 
+                      border: isSelected ? `2px solid ${t.id === 'dark' ? '#3b82f6' : t.color}` : '1px solid var(--border)', 
+                      padding: '15px', 
+                      borderRadius: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '15px',
+                      cursor: 'pointer',
+                      boxShadow: isSelected ? `0 4px 12px ${t.color}30` : 'none'
+                    }}
+                  >
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: t.color }}></div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text)' }}>{t.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.desc}</div>
+                    </div>
+                    {isSelected && (
+                      <div style={{ marginLeft: 'auto', color: t.id === 'dark' ? '#3b82f6' : t.color, fontWeight: 800 }}>✓ Aktif</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '15px', textAlign: 'center' }}>* Tema Mode Gelap akan otomatis mengubah background dan warna teks.</p>
           </div>
         )}
 
-        {/* Section: Colors Saldo */}
-        <SectionHeader id="colors_saldo" icon={Wallet} title="Pengaturan Warna Saldo" active={openSection === 'colors_saldo'} />
-        {openSection === 'colors_saldo' && (
-          <div style={{ padding: '5px 15px 25px', animation: 'slideDown 0.3s ease-out' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
-              <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <label>Warna Kartu Saldo Bank</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '2px' }} value={colors.bank || '#2563eb'} onChange={(e) => updateColor('bank', e.target.value)} />
-                  <div style={{ flex: 1, background: colors.bank || '#2563eb', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW SALDO BANK</div>
-                </div>
-              </div>
 
-              <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <label>Warna Kartu Saldo Kas</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '2px' }} value={colors.cash || '#10b981'} onChange={(e) => updateColor('cash', e.target.value)} />
-                  <div style={{ flex: 1, background: colors.cash || '#10b981', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW SALDO KAS</div>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <label>Warna Kartu Laba Admin</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '2px' }} value={colors.admin || '#ffffff'} onChange={(e) => updateColor('admin', e.target.value)} />
-                  <div style={{ flex: 1, background: colors.admin || '#ffffff', border: colors.admin === '#ffffff' ? '1px solid var(--border)' : 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: colors.admin === '#ffffff' ? 'var(--text)' : '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW LABA ADMIN</div>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <label>Warna Kartu Laba ACC</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '5px' }} value={colors.acc || '#ffffff'} onChange={(e) => updateColor('acc', e.target.value)} />
-                  <div style={{ flex: 1, background: colors.acc || '#ffffff', border: colors.acc === '#ffffff' ? '1px solid var(--border)' : 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: colors.acc === '#ffffff' ? 'var(--text)' : '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW LABA ACC</div>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ background: 'var(--card)', padding: '15px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <label>Warna Kartu Tarik Tunai</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="color" className="form-control" style={{ height: '45px', width: '60px', padding: '2px' }} value={colors.tarik || '#ffffff'} onChange={(e) => updateColor('tarik', e.target.value)} />
-                  <div style={{ flex: 1, background: colors.tarik || '#ffffff', border: colors.tarik === '#ffffff' ? '1px solid var(--border)' : 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 15px', color: colors.tarik === '#ffffff' ? 'var(--text)' : '#fff', fontSize: '12px', fontWeight: 700 }}>PREVIEW TARIK TUNAI</div>
-                </div>
-              </div>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '15px', textAlign: 'center' }}>* Warna putih akan menggunakan tampilan standar kartu.</p>
-          </div>
-        )}
-
-        {/* Section: Gemini AI */}
-        <SectionHeader id="gemini" icon={Sparkles} title="AI Asisten (Gemini)" active={openSection === 'gemini'} />
-        {openSection === 'gemini' && (
-          <div style={{ padding: '5px 10px 20px' }}>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '15px', lineHeight: '1.5' }}>
-              Hubungkan dengan Gemini AI untuk mendapatkan bantuan pintar seputar penggunaan aplikasi KINK.
-            </p>
-            <div className="form-group">
-              <label>API Key Gemini</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  placeholder="Masukkan Gemini API Key"
-                  value={geminiKey}
-                  onChange={(e) => { setGeminiKey(e.target.value); setGeminiStatus('idle'); }}
-                  style={{ flex: 1 }}
-                />
-              </div>
-              <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                Dapatkan API Key di <a href="https://aistudio.google.com/apikey" target="_blank" style={{ color: 'var(--accent)' }}>aistudio.google.com/apikey</a>
-              </p>
-            </div>
-            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
-              <label style={{ margin: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={geminiEnabled}
-                  onChange={(e) => setGeminiEnabled(e.target.checked)}
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent)' }}
-                />
-                Aktifkan AI Asisten
-              </label>
-            </div>
-            {geminiKey && (
-              <button 
-                onClick={async () => {
-                  if (!geminiKey) return;
-                  setGeminiStatus('testing');
-                  try {
-                    initGemini(geminiKey);
-                    await chatWithGemini('Halo, balas dengan "OK" saja untuk test koneksi.');
-                    setGeminiStatus('ok');
-                    setTimeout(() => setGeminiStatus('idle'), 3000);
-                  } catch {
-                    setGeminiStatus('error');
-                    setTimeout(() => setGeminiStatus('idle'), 3000);
-                  }
-                }}
-                className="btn-submit" 
-                style={{ 
-                  marginTop: '10px', 
-                  fontSize: '12px', 
-                  padding: '10px',
-                  background: geminiStatus === 'ok' ? 'var(--success)' : geminiStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
-                }}
-              >
-                {geminiStatus === 'idle' && 'Uji Koneksi'}
-                {geminiStatus === 'testing' && 'Menguji...'}
-                {geminiStatus === 'ok' && '✓ Terhubung'}
-                {geminiStatus === 'error' && '✗ Gagal'}
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Section: Reset */}
         <SectionHeader id="reset" icon={AlertTriangle} title="Pembersihan Data" active={openSection === 'reset'} />

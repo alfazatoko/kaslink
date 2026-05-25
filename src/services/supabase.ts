@@ -17,8 +17,6 @@ interface ProfileRow {
   default_category: string | null
   categories: any
   colors: any
-  gemini_key: string | null
-  gemini_enabled: boolean | null
   created_at: string | null
 }
 
@@ -86,8 +84,6 @@ const mapProfile = (row: ProfileRow): UserProfile => ({
   defaultCategory: row.default_category || 'cat_bank_out',
   categories: parseJsonField<Category[]>(row.categories, []),
   colors: parseJsonField<CustomColors>(row.colors, {}),
-  geminiKey: row.gemini_key || undefined,
-  geminiEnabled: row.gemini_enabled || false,
 })
 
 const mapBalances = (row: RekapHarianRow): Balances => ({
@@ -138,8 +134,6 @@ const profileToRow = (uid: string, profile: Partial<UserProfile>) => ({
   default_category: profile.defaultCategory,
   categories: profile.categories ?? undefined,
   colors: profile.colors ?? undefined,
-  gemini_key: profile.geminiKey,
-  gemini_enabled: profile.geminiEnabled,
 })
 
 const balancesToRow = (uid: string, tanggal: string, balances: Balances) => ({
@@ -239,6 +233,19 @@ export const getHistory = async (uid: string, startOfToday?: string, maxResults:
   }
   
   const { data, error } = await query
+  if (error) throw error
+  return (data as HistoryRow[]).map(mapHistory)
+}
+
+export const getHistoryByDateRange = async (uid: string, startDate: string, endDate: string): Promise<HistoryItem[]> => {
+  const { data, error } = await supabase
+    .from('history')
+    .select('*')
+    .eq('user_id', uid)
+    .gte('tgl', `${startDate}T00:00:00`)
+    .lte('tgl', `${endDate}T23:59:59`)
+    .order('tgl', { ascending: false })
+  
   if (error) throw error
   return (data as HistoryRow[]).map(mapHistory)
 }

@@ -5,8 +5,6 @@ export interface UserProfile {
   defaultCategory: string;
   categories: Category[];
   colors?: CustomColors;
-  geminiKey?: string;
-  geminiEnabled?: boolean;
 }
 
 export interface CustomColors {

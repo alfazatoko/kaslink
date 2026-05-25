@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { HistoryItem, Balances, UserProfile } from '../../types';
 import { ArrowLeft, Download, Share2, Calendar, Clock, MoreVertical, Filter } from 'lucide-react';
+import { getHistoryByDateRange } from '../../services/supabase';
+import { auth } from '../../services/firebase';
 import { formatRp, getInt, formatInput } from '../../utils/formatters';
 import html2pdf from 'html2pdf.js';
 
@@ -16,6 +18,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ history, profile, balances, o
   const [filterTglEnd,   setFilterTglEnd]   = useState<string>(new Date().toISOString().split('T')[0]);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [localHistory, setLocalHistory] = useState<HistoryItem[]>([]);
 
   // Local state for Saldo Real app like ALPHA
   const [saldoReal, setSaldoReal] = useState<number>(balances.bank);
@@ -44,10 +47,23 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ history, profile, balances, o
   }, [profile?.categories]);
 
   useEffect(() => {
+    const fetchFiltered = async () => {
+      if (!auth.currentUser) return;
+      try {
+        const data = await getHistoryByDateRange(auth.currentUser.uid, filterTglStart, filterTglEnd);
+        setLocalHistory(data);
+      } catch (err) {
+        console.error("Gagal memuat history:", err);
+      }
+    };
+    fetchFiltered();
+  }, [filterTglStart, filterTglEnd]);
+
+  useEffect(() => {
     const stats: Record<string, { count: number; total: number; fee: number }> = {};
     let sales = 0, tarik = 0, admin = 0, acc = 0, deposit = 0, kasbon = 0, txCount = 0;
 
-    for (const h of history) {
+    for (const h of localHistory) {
       if (!h.tgl) continue;
       const itemDate = h.tgl.split('T')[0];
       if (itemDate < filterTglStart || itemDate > filterTglEnd) continue;
@@ -76,7 +92,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ history, profile, balances, o
     }
 
     setReportData({ catStats: stats, salesTotal: sales, tarikTotal: tarik, adminTotal: admin, accTotal: acc, depositTotal: deposit, kasbonTotal: kasbon, txCount });
-  }, [history, filterTglStart, filterTglEnd, categoryMap]);
+  }, [localHistory, filterTglStart, filterTglEnd, categoryMap]);
 
   // Saldo kas live dari beranda (bukan dari history)
   const liveKas  = balances.sales + balances.admin + balances.acc - balances.tarik;
